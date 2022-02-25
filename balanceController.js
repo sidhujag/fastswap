@@ -38,6 +38,18 @@ exports.FetchAndUpdateBalances = async function () {
   const balanceEntry = new Balance()
   balanceEntry.sysbalance = web3.utils.BN(sysAccount.balance).mul(web3.utils.BN(Math.pow(10, 10))).toString()
   balanceEntry.nevmbalance = await web3.eth.getBalance(CONFIGURATION.NEVMADDRESS)
+  // cover for 1 SYS gas
+  balanceEntry.sysbalance = web3.utils.BN(balanceEntry.sysbalance).sub(CONFIGURATION.COINNEVM)
+  balanceEntry.nevmbalance = web3.utils.BN(balanceEntry.nevmbalance).sub(CONFIGURATION.COINNEVM)
+  const zeroBN = web3.utils.BN(0)
+  if (balanceEntry.sysbalance.lt(zeroBN)) {
+    balanceEntry.sysbalance = zeroBN
+  }
+  if (balanceEntry.nevmbalance.lt(zeroBN)) {
+    balanceEntry.nevmbalance = zeroBN
+  }
+  balanceEntry.sysbalance = balanceEntry.sysbalance.toString()
+  balanceEntry.nevmbalance = balanceEntry.nevmbalance.toString()
   const updateRes = await this.update(balanceEntry)
   if (!updateRes) {
     return null

@@ -1,3 +1,4 @@
+import web3 from './web3'
 class CONFIGURATION {
   constructor () {
     this.Web3URL = 'https://rpc.syscoin.org'
@@ -8,6 +9,8 @@ class CONFIGURATION {
     this.NEVMKEY = ''
     this.SYSKEY = ''
     this.NEVMBlockHeight = 1317500
+    this.COINNEVM = web3.utils.toWei('1')
+    this.COINSYS = web3.utils.BN('100000000')
   }
 }
 export default new CONFIGURATION()

@@ -8,8 +8,6 @@ const WIP = require('./wipModel')
 // Import complete model
 const Complete = require('./completeModel')
 const balanceController = require('./balanceController')
-const COINNEVM = web3.utils.toWei('1')
-const COINSYS = web3.utils.BN('100000000')
 // Handle index actions
 exports.index = function (req, res) {
   WIP.get(function (err, wipEntry) {
@@ -103,7 +101,7 @@ exports.new = async function (req, res) {
                   })
                   reject(err)
                 }
-                if (web3.utils.BN(amount).lt(COINNEVM)) {
+                if (web3.utils.BN(amount).lt(CONFIGURATION.COINNEVM)) {
                   res.json({
                     status: 'error',
                     data: 'Less than minimum accepted value'
@@ -152,7 +150,7 @@ exports.new = async function (req, res) {
                   })
                   reject(err)
                 }
-                if (web3.utils.BN(amount).lt(COINSYS)) {
+                if (web3.utils.BN(amount).lt(CONFIGURATION.COINSYS)) {
                   res.json({
                     status: 'error',
                     data: 'Less than minimum accepted value'
