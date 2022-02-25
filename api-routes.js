@@ -1,26 +1,33 @@
 // api-routes.js
 // Initialize express router
-let router = require('express').Router();
+const router = require('express').Router()
 // Set default API response
 router.get('/', function (req, res) {
-    res.json({
-        status: 'API Its Working',
-        message: 'Welcome to RESTHub crafted with love!',
-    });
-});
-// Import contact controller
-var contactController = require('./contactController');
+  res.json({
+    status: 'API Its Working',
+    message: 'Welcome to FastSwap crafted with love!'
+  })
+})
+
+const wipController = require('./wipController')
+const balanceController = require('./balanceController')
+const balanceWIPController = require('./balanceWIPController')
 // Contact routes
-router.route('/contacts')
-    .get(contactController.index)
-    .post(contactController.new);
+router.route('/fastswap')
+  .get(wipController.index)
 
-router.route('/contacts/:contact_id')
-    .get(contactController.view)
-    .patch(contactController.update)
-    .put(contactController.update)
-    .delete(contactController.delete);
+router.route('/fastswap/:txid')
+  .get(wipController.view)
+  .post(wipController.new)
 
+router.route('/fastswap/balances')
+  .get(balanceController.index)
+
+router.route('/fastswap/balancewip')
+  .get(balanceWIPController.index)
+
+router.route('/fastswap/balancewip/:srctxid')
+  .get(balanceWIPController.view)
 
 // Export API routes
-module.exports = router;
+module.exports = router
