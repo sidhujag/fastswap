@@ -29,6 +29,7 @@ exports.update = async function (balanceEntry) {
       })
     })
   } catch (error) {
+    console.log('BalanceController update failed: ' + error.message)
     return false
   }
   return true
@@ -50,8 +51,10 @@ exports.FetchAndUpdateBalances = async function () {
   }
   balanceEntry.sysbalance = balanceEntry.sysbalance.toString()
   balanceEntry.nevmbalance = balanceEntry.nevmbalance.toString()
+  console.log('FetchAndUpdateBalances sysbalance: ' + balanceEntry.sysbalance + ' nevmbalance: ' + balanceEntry.nevmbalance)
   const updateRes = await this.update(balanceEntry)
   if (!updateRes) {
+    console.log('update failed')
     return null
   }
   return balanceEntry

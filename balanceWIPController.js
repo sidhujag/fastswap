@@ -27,6 +27,7 @@ exports.update = async function (balanceWIPEntry) {
       })
     })
   } catch (error) {
+    console.log('BalanceWIPController update failed: ' + error.message)
     return false
   }
   return true
@@ -55,6 +56,7 @@ exports.delete = async function (srctxid) {
       })
     })
   } catch (error) {
+    console.log('BalanceWIPController delete failed: ' + error.message)
     return false
   }
   return true

@@ -16,6 +16,7 @@ exports.new = async function (obj) {
       })
     })
   } catch (error) {
+    console.log('CompleteController new failed: ' + error.message)
     return false
   }
   return true

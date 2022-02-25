@@ -13,14 +13,17 @@ exports.sysToSysx = async function (amount) {
   ])
   const result = await sjs.syscoinBurnToAssetAllocation(txOpts, assetMap, CONFIGURATION.SYSADDRESS, feeRate, CONFIGURATION.SYSADDRESS)
   if (!result || !result.psbt) {
+    console.log('sysToSysx syscoinBurnToAssetAllocation failed')
     return null
   }
   const psbt = await sjs.signAndSendWithWIF(result.psbt, CONFIGURATION.SYSKEY, result.assets)
   if (!psbt) {
+    console.log('sysToSysx signAndSendWithWIF failed')
     return null
   }
   const tx = psbt.extractTransaction()
   if (!tx) {
+    console.log('sysToSysx extractTransaction failed')
     return null
   }
   return tx.getId()
@@ -35,14 +38,17 @@ exports.sysxToSys = async function (amount) {
   ])
   const result = await sjs.assetAllocationBurn(assetOpts, txOpts, assetMap, CONFIGURATION.SYSADDRESS, feeRate, CONFIGURATION.SYSADDRESS)
   if (!result || !result.psbt) {
+    console.log('sysxToSys assetAllocationBurn failed')
     return null
   }
   const psbt = await sjs.signAndSendWithWIF(result.psbt, CONFIGURATION.SYSKEY, result.assets)
   if (!psbt) {
+    console.log('sysxToSys signAndSendWithWIF failed')
     return null
   }
   const tx = psbt.extractTransaction()
   if (!tx) {
+    console.log('sysxToSys extractTransaction failed')
     return null
   }
   return tx.getId()
@@ -56,14 +62,17 @@ exports.burnSYSXToNEVM = async function (amount) {
   ])
   const result = await sjs.assetAllocationBurn(assetOpts, txOpts, assetMap, CONFIGURATION.SYSADDRESS, feeRate, CONFIGURATION.SYSADDRESS)
   if (!result || !result.psbt) {
+    console.log('burnSYSXToNEVM assetAllocationBurn failed')
     return null
   }
   const psbt = await sjs.signAndSendWithWIF(result.psbt, CONFIGURATION.SYSKEY, result.assets)
   if (!psbt) {
+    console.log('burnSYSXToNEVM signAndSendWithWIF failed')
     return null
   }
   const tx = psbt.extractTransaction()
   if (!tx) {
+    console.log('burnSYSXToNEVM extractTransaction failed')
     return null
   }
   return tx.getId()
@@ -85,6 +94,7 @@ exports.burnNEVMToSYSX = async function (amount) {
         })
     })
   } catch (error) {
+    console.log('burnNEVMToSYSX freezeBurnERC20 failed:' + error.message)
     return null
   }
   return hash
@@ -114,6 +124,7 @@ exports.getProofs = async function (txid) {
     }
   } catch (e) {
     ret.error = (e && e.message) ? e.message : 'Unknown error!'
+    console.log('getProofs failed:' + ret.error)
   }
   return ret
 }
@@ -124,6 +135,7 @@ exports.mintNEVM = async function (txid) {
   }
   const SyscoinRelay = new web3.eth.Contract(rconfig.data, rconfig.contract)
   if (!SyscoinRelay || !SyscoinRelay.methods || !SyscoinRelay.methods.relayTx) {
+    console.log('mintNEVM web3.eth.Contract failed')
     return null
   }
   const txsiblings = paramObj.txsiblings
@@ -131,6 +143,7 @@ exports.mintNEVM = async function (txid) {
   const syscoinblockheader = paramObj.syscoinblockheader
   const nevmblockhash = paramObj.nevm_blockhash
   if (!txsiblings) {
+    console.log('mintNEVM txsiblings failed')
     return null
   }
   const _txBytes = '0x' + paramObj.txbytes
@@ -145,6 +158,7 @@ exports.mintNEVM = async function (txid) {
   }
   const nevmBlock = await web3.eth.getBlock('0x' + nevmblockhash)
   if (!nevmBlock) {
+    console.log('mintNEVM web3.eth.getBlock failed')
     return null
   }
   const _syscoinBlockHeader = '0x' + syscoinblockheader
@@ -160,6 +174,7 @@ exports.mintNEVM = async function (txid) {
         })
     })
   } catch (error) {
+    console.log('mintNEVM relayTx failed:' + error.message)
     return null
   }
   return hash
@@ -176,14 +191,17 @@ exports.mintSYSX = async function (srctxid) {
   const assetMap = null
   const result = await sjs.assetAllocationMint(assetOpts, txOpts, assetMap, CONFIGURATION.SYSADDRESS, feeRate, CONFIGURATION.SYSADDRESS)
   if (!result || !result.psbt) {
+    console.log('mintSYSX assetAllocationMint failed')
     return null
   }
   const psbt = await sjs.signAndSendWithWIF(result.psbt, CONFIGURATION.SYSKEY, result.assets)
   if (!psbt) {
+    console.log('mintSYSX signAndSendWithWIF failed')
     return null
   }
   const tx = psbt.extractTransaction()
   if (!tx) {
+    console.log('mintSYSX extractTransaction failed')
     return null
   }
   return tx.getId()
@@ -196,14 +214,17 @@ exports.sendSys = async function (address, amount) {
   ]
   const result = await sjs.createTransaction(txOpts, CONFIGURATION.SYSADDRESS, outputsArr, feeRate, CONFIGURATION.SYSADDRESS)
   if (!result || !result.psbt) {
+    console.log('sendSys createTransaction failed')
     return null
   }
   const psbt = await sjs.signAndSendWithWIF(result.psbt, CONFIGURATION.SYSKEY, result.assets)
   if (!psbt) {
+    console.log('sendSys signAndSendWithWIF failed')
     return null
   }
   const tx = psbt.extractTransaction()
   if (!tx) {
+    console.log('sendSys extractTransaction failed')
     return null
   }
   return tx.getId()
@@ -224,6 +245,7 @@ exports.sendNEVM = async function (address, amount) {
         })
     })
   } catch (error) {
+    console.log('sendNEVM web3.eth.sendTransaction failed:' + error.message)
     return null
   }
   return hash
@@ -231,6 +253,7 @@ exports.sendNEVM = async function (address, amount) {
 exports.sysChainlocked = async function (srctxid) {
   const res = await this.getProofs(srctxid)
   if (!res || res.error || !res.chainlock) {
+    console.log('sysChainlocked this.getProofs failed')
     return false
   }
   return true
@@ -243,19 +266,23 @@ exports.sysChainlocked = async function (srctxid) {
 exports.NEVMChainlocked = async function (srctxid) {
   const srctx = await web3.eth.getTransaction(srctxid)
   if (!srctx) {
+    console.log('NEVMChainlocked web3.eth.getTransaction failed')
     return false
   }
   const utxoChainHeight = (srctx.blockNumber + CONFIGURATION.NEVMBlockHeight) - 1
   const block = await sjs.utils.fetchBackendBlock(CONFIGURATION.BlockbookAPIURL, utxoChainHeight)
   if (!block || !block.txs || !block.length) {
+    console.log('NEVMChainlocked fetchBackendBlock failed')
     return false
   }
   const coinbaseTxid = block.tx[0].txid
   const res = await this.getProofs(coinbaseTxid)
   if (!res || res.error || !res.chainlock) {
+    console.log('NEVMChainlocked this.getProofs failed')
     return false
   }
   if (res.nevm_blockhash !== srctx.blockHash) {
+    console.log('NEVMChainlocked blockhash mismatch')
     return false
   }
   return true

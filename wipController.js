@@ -30,10 +30,18 @@ exports.new = async function (req, res) {
   if (!req.body.type) {
     res.json({
       status: 'error',
-      data: "Type not defined as 'utxo' or 'nevm'"
+      data: "type not defined as 'utxo' or 'nevm'"
     })
     return
   }
+  if (!req.body.dstaddress) {
+    res.json({
+      status: 'error',
+      data: 'dstaddress not defined'
+    })
+    return
+  }
+  wip.dstaddress = req.body.dstaddress
   let balanceEntry
   try {
     balanceEntry = await new Promise((resolve, reject) => {
@@ -46,6 +54,7 @@ exports.new = async function (req, res) {
       })
     })
   } catch (error) {
+    console.log('WIPController:balanceController new failed: ' + error.message)
     return
   }
 
@@ -78,7 +87,7 @@ exports.new = async function (req, res) {
               // if nevm then destination is utxo
               if (req.body.type === 'nevm') {
                 const srctx = await web3.eth.getTransaction(wip.srctxid)
-                if (!srctx || !srctx.input) {
+                if (!srctx) {
                   res.json({
                     status: 'error',
                     data: 'Invalid NEVM transaction'
@@ -86,7 +95,7 @@ exports.new = async function (req, res) {
                   reject(err)
                 }
                 try {
-                  bitcoin.address.toOutputScript(srctx.input)
+                  bitcoin.address.toOutputScript(wip.dstaddress)
                 } catch (e) {
                   res.json({
                     status: 'error',
@@ -98,6 +107,13 @@ exports.new = async function (req, res) {
                   res.json({
                     status: 'error',
                     data: 'NEVM payment not found'
+                  })
+                  reject(err)
+                }
+                if (srctx.from === CONFIGURATION.NEVMADDRESS) {
+                  res.json({
+                    status: 'error',
+                    data: 'NEVM from address cannot be from fast swap service'
                   })
                   reject(err)
                 }
@@ -118,14 +134,13 @@ exports.new = async function (req, res) {
                 // if utxo then destination is nevm
               } else if (req.body.type === 'utxo') {
                 const srctx = await sjs.utils.fetchBackendRawTx(CONFIGURATION.BlockbookAPIURL, wip.srctxid)
-                if (!srctx || !srctx.memo) {
+                if (!srctx) {
                   res.json({
                     status: 'error',
                     data: 'Invalid Syscoin transaction'
                   })
                   reject(err)
                 }
-                wip.dstaddress = Buffer.from(srctx.memo, 'base64').toString('ascii')
                 if (!web3.utils.isAddress(wip.dstaddress)) {
                   res.json({
                     status: 'error',
@@ -135,12 +150,39 @@ exports.new = async function (req, res) {
                 }
                 let foundPayment = false
                 for (const vout of srctx.vout) {
-                  for (const address of vout.addressses) {
-                    if (address === CONFIGURATION.SYSADDRESS) {
-                      foundPayment = true
-                      amount = vout.value
-                      break
+                  if (vout && vout.addressses) {
+                    for (const address of vout.addressses) {
+                      if (address === CONFIGURATION.SYSADDRESS) {
+                        foundPayment = true
+                        amount = vout.value
+                        break
+                      }
                     }
+                  } else {
+                    res.json({
+                      status: 'error',
+                      data: 'Syscoin output addresses not found'
+                    })
+                    reject(err)
+                  }
+                }
+                for (const vin of srctx.vin) {
+                  if (vin && vin.addressses) {
+                    for (const address of vin.addressses) {
+                      if (address === CONFIGURATION.SYSADDRESS) {
+                        res.json({
+                          status: 'error',
+                          data: 'Syscoin input cannot come from fast swap service address'
+                        })
+                        reject(err)
+                      }
+                    }
+                  } else {
+                    res.json({
+                      status: 'error',
+                      data: 'Syscoin input addresses not found'
+                    })
+                    reject(err)
                   }
                 }
                 if (!foundPayment) {
@@ -185,6 +227,7 @@ exports.new = async function (req, res) {
       })
     })
   } catch (error) {
+    console.log('WIPController new failed: ' + error.message)
   }
 }
 // Handle view wip info
@@ -218,6 +261,7 @@ exports.update = async function (wipEntry) {
       })
     })
   } catch (error) {
+    console.log('WIPController update failed: ' + error.message)
     return false
   }
   return true
@@ -234,6 +278,7 @@ exports.delete = async function (srctxid) {
       })
     })
   } catch (error) {
+    console.log('WIPController delete failed: ' + error.message)
     return false
   }
   return true
