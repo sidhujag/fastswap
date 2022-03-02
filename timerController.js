@@ -1,104 +1,104 @@
 // timerController.js
 // Handle index actions
-import web3 from './web3'
-let counter = 0
-const wipController = require('./wipController')
-const WIP = require('./wipModel')
-const completeController = require('./completeController')
-const balanceController = require('./balanceController')
-const balanceWIPController = require('./balanceWIPController')
-const BalanceWIP = require('./balanceWIPModel')
-const txController = require('./txController')
+import web3 from './web3.js'
+import wipController from './wipController.js'
+import WIP from './wipModel.js'
+import completeController from './completeController.js'
+import balanceController from './balanceController.js'
+import balanceWIPController from './balanceWIPController.js'
+import BalanceWIP from './balanceWIPModel.js'
+import txController from './txController.js'
+import Balance from './balanceModel.js'
+class TimerController {
+}
 // run every 10 seconds
-exports.loop = async function (obj) {
+let counter = 0
+TimerController.prototype.loop = async function (obj) {
   counter++
   if ((counter % 6) === 0) {
     counter = 0
-    await this.balanceAdjust()
-    await this.balanceWIPStatus()
+    await obj.balanceAdjust()
+    await obj.balanceWIPStatus()
   } else {
-    await this.status()
+    await obj.status()
   }
-  setTimeout(obj.loop, 10000)
+  setTimeout(obj.loop, 10000, obj)
 }
-exports.status = async function () {
-  console.log('Status loop')
-  WIP.get(async function (err, wipEntry) {
+TimerController.prototype.status = async function () {
+  WIP.find(async function (err, wipEntry) {
     if (!err && wipEntry && wipEntry.length) {
-      console.log('wipEntry.length ' + wipEntry.length)
       let updateBalance = false
       for (const wipObj of wipEntry) {
-        console.log('wipObj ' + JSON.stringify(wipObj))
         // initial state, if utxo send to nevm sys, if nevm send to utxo sys
         if (wipObj.status === 1) {
           wipObj.status = 2
           // check for confirmation/chainlock
           if (wipObj.type === 'nevm') {
-            const lockedRes = await txController.NEVMChainlocked(wipObj.srctxid)
+            const lockedRes = await txController.NEVMChainlocked(wipObj.srctxid, txController)
             if (!lockedRes) {
               console.log('status == 1 nevm not chainlocked')
-              return
+              continue
             }
             // send SYS to user on utxo chain
             wipObj.dsttxid = await txController.sendSys(wipObj.dstaddress, wipObj.amount)
             if (!wipObj.dsttxid) {
               console.log('status == 1 sendSys failed')
-              return
+              continue
             }
           } else if (wipObj.type === 'utxo') {
-            const lockedRes = await txController.sysChainlocked(wipObj.srctxid)
+            const lockedRes = await txController.sysChainlocked(wipObj.srctxid, txController)
             if (!lockedRes) {
               console.log('status == 1 sys not chainlocked')
-              return
+              continue
             }
             // send SYS to user on nevm chain
             wipObj.dsttxid = await txController.sendNEVM(wipObj.dstaddress, wipObj.amount)
             if (!wipObj.dsttxid) {
               console.log('status == 1 sendNEVM failed')
-              return
+              continue
             }
           }
           const updateRes = await wipController.update(wipObj)
           if (!updateRes) {
             console.log('status == 1 wipController could not be updated')
-            return
+            continue
           }
           updateBalance = true
         } else if (wipObj.status === 2) {
           if (wipObj.type === 'nevm') {
-            const lockedRes = await txController.sysChainlocked(wipObj.dsttxid)
+            const lockedRes = await txController.sysChainlocked(wipObj.dsttxid, txController)
             if (!lockedRes) {
               console.log('status == 2 sys not chainlocked')
-              return
+              continue
             }
           } else if (wipObj.type === 'utxo') {
-            const lockedRes = await txController.NEVMChainlocked(wipObj.dsttxid)
+            const lockedRes = await txController.NEVMChainlocked(wipObj.dsttxid, txController)
             if (!lockedRes) {
               console.log('status == 2 nevm not chainlocked')
-              return
+              continue
             }
           }
-          const newRes = await completeController.new(wipEntry)
+          const newRes = await completeController.new(wipObj)
           if (!newRes) {
-            console.log('status == 2 completeController could add wipEntry')
-            return
+            console.log('status == 2 completeController could not add wipEntry')
+            continue
           }
-          const deleteRes = await wipController.delete(wipEntry.srctxid)
+          const deleteRes = await wipController.delete(wipObj.srctxid)
           if (!deleteRes) {
-            console.log('status == 2 wipController could delete wipEntry')
-            return
+            console.log('status == 2 wipController could not delete wipEntry')
+            continue
           }
         }
       }
       if (updateBalance) {
-        await balanceController.FetchAndUpdateBalances()
+        await balanceController.FetchAndUpdateBalances(balanceController)
       }
     }
   }, 10)
 }
-exports.balanceWIPStatus = async function () {
+TimerController.prototype.balanceWIPStatus = async function () {
   console.log('balanceWIPStatus loop')
-  BalanceWIP.get(async function (err, wipEntry) {
+  BalanceWIP.find(async function (err, wipEntry) {
     if (!err && wipEntry && wipEntry.length) {
       console.log('wipEntry.length ' + wipEntry.length)
       let updateBalance = false
@@ -108,135 +108,137 @@ exports.balanceWIPStatus = async function () {
         if (wipObj.status === 1) {
           wipObj.status = 2
           if (wipObj.type === 'nevm') {
-            const lockedRes = await txController.NEVMChainlocked(wipObj.srctxid)
+            const lockedRes = await txController.NEVMChainlocked(wipObj.srctxid, txController)
             if (!lockedRes) {
               console.log('status == 1 NEVMChainlocked failed')
-              return
+              continue
             }
             // mint SYSX on utxo chain
             wipObj.inttxid = await txController.mintSYSX(wipObj.srctxid)
             if (!wipObj.inttxid) {
               console.log('status == 1 mintSYSX failed')
-              return
+              continue
             }
           } else if (wipObj.type === 'utxo') {
-            const lockedRes = await txController.sysChainlocked(wipObj.srctxid)
+            const lockedRes = await txController.sysChainlocked(wipObj.srctxid, txController)
             if (!lockedRes) {
               console.log('status == 1 sysChainlocked failed')
-              return
+              continue
             }
             // send SYSX to nevm chain
             wipObj.inttxid = await txController.burnSYSXToNEVM(wipObj.amount)
             if (!wipObj.inttxid) {
               console.log('status == 1 burnSYSXToNEVM failed')
-              return
+              continue
             }
           } else {
             console.log('status == 1 invalid type')
-            return
+            continue
           }
           const updateRes = await balanceWIPController.update(wipObj)
           if (!updateRes) {
             console.log('status == 1 balanceWIPController.update failed')
-            return
+            continue
           }
           updateBalance = true
         } else if (wipObj.status === 2) {
           wipObj.status = 3
           if (wipObj.type === 'nevm') {
-            const lockedRes = await txController.sysChainlocked(wipObj.inttxid)
+            const lockedRes = await txController.sysChainlocked(wipObj.inttxid, txController)
             if (!lockedRes) {
               console.log('status == 2 sysChainlocked.update failed')
-              return
+              continue
             }
             // burn SYSX to SYS
             wipObj.dsttxid = await txController.sysxToSys(wipObj.amount)
             if (!wipObj.dsttxid) {
               console.log('status == 2 sysxToSys failed')
-              return
+              continue
             }
           } else if (wipObj.type === 'utxo') {
-            const lockedRes = await txController.sysChainlocked(wipObj.inttxid)
+            const lockedRes = await txController.sysChainlocked(wipObj.inttxid, txController)
             if (!lockedRes) {
               console.log('status == 2 sysChainlocked.update failed')
-              return
+              continue
             }
             // mint NEVM SYS
-            wipObj.dsttxid = await txController.mintNEVM(wipObj.inttxid)
+            wipObj.dsttxid = await txController.mintNEVM(wipObj.inttxid, txController)
             if (!wipObj.dsttxid) {
               console.log('status == 2 mintNEVM failed')
-              return
+              continue
             }
           } else {
             console.log('status == 2 invalid type')
-            return
+            continue
           }
           const updateRes = await balanceWIPController.update(wipObj)
           if (!updateRes) {
             console.log('status == 2 balanceWIPController.update failed')
-            return
+            continue
           }
         } else if (wipObj.status === 3) {
           // check for confirmations
           if (wipObj.type === 'nevm') {
-            const lockedRes = await txController.sysChainlocked(wipObj.dsttxid)
+            const lockedRes = await txController.sysChainlocked(wipObj.dsttxid, txController)
             if (!lockedRes) {
               console.log('status == 3 sysChainlocked failed')
-              return
+              continue
             }
           } else if (wipObj.type === 'utxo') {
-            const lockedRes = await txController.NEVMChainlocked(wipObj.dsttxid)
+            const lockedRes = await txController.NEVMChainlocked(wipObj.dsttxid, txController)
             if (!lockedRes) {
               console.log('status == 3 NEVMChainlocked failed')
-              return
+              continue
             }
           } else {
             console.log('status == 3 invalid type')
-            return
+            continue
           }
+
           const deleteRes = await balanceWIPController.delete(wipObj.srctxid)
           if (!deleteRes) {
             console.log('status == 3 balanceWIPController.delete failed')
-            return
+            continue
           }
           updateBalance = true
         }
       }
       if (updateBalance) {
-        await balanceController.FetchAndUpdateBalances()
+        await balanceController.FetchAndUpdateBalances(balanceController)
       }
     }
   }, 10)
 }
 // Handle create wip actions
-exports.balanceAdjust = async function () {
+TimerController.prototype.balanceAdjust = async function () {
   console.log('balanceAdjust loop')
   // check if balanceWIP is in progress if so skip for now...
-  const count = await BalanceWIP.estimatedDocumentCount()
+  const count = await BalanceWIP.estimatedDocumentCount({})
   if (count > 0) {
-    console.log('BalanceWIP.estimatedDocumentCount() count ' + count)
+    console.log('BalanceWIP.estimatedDocumentCount({}) count ' + count)
     return
   }
   let balanceEntry
   try {
-    balanceEntry = await new Promise((resolve, reject) => {
-      balanceController.index(function (err, balanceEntry) {
-        if (err) {
-          reject(err)
-        } else {
-          resolve(balanceEntry)
-        }
-      })
-    })
-  } catch (error) {
-    console.log('balanceController.index error: ' + error.message)
+    balanceEntry = await Balance.findOne({}).exec()
+  } catch (e) {
+    console.log('balanceEntry not found')
     return
   }
-  const bnSYS = web3.utils.BN(balanceEntry.sysbalance)
-  const bnNEVM = web3.utils.BN(balanceEntry.nevmbalance)
-  const target = bnSYS.add(bnNEVM).div(web3.utils.BN(2))
-  if (bnSYS.gt(target)) {
-    const bnBurnAmount = web3.utils.fromWei(bnSYS.sub(target), 'ether')
+  if (!balanceEntry) {
+    await balanceController.FetchAndUpdateBalances(balanceController)
+    console.log('balanceEntry empty')
+    return
+  }
+  const bnSYS = web3.utils.toBN(balanceEntry.sysbalance)
+  const bnNEVM = web3.utils.toBN(balanceEntry.nevmbalance)
+  // when one side is ~33% more than the other then adjust
+  const sum = bnSYS.add(bnNEVM)
+  const half = sum.div(web3.utils.toBN(2))
+  const target = sum.div(web3.utils.toBN(3))
+  if (bnSYS.gt(bnNEVM) && bnSYS.sub(bnNEVM).gt(target)) {
+    const bnBurnAmount = bnSYS.sub(half).toString()
+    console.log('try sysToSysx bnBurnAmount ' + bnBurnAmount.toString())
     // go from SYS -> SYSX -> NEVM
     const balanceWIP = new BalanceWIP()
     balanceWIP.srctxid = await txController.sysToSysx(bnBurnAmount.toString())
@@ -249,8 +251,9 @@ exports.balanceAdjust = async function () {
     } else {
       console.log('sysToSysx failed')
     }
-  } else if (bnNEVM.gt(target)) {
-    const bnBurnAmount = web3.utils.fromWei(bnNEVM.sub(target), 'ether')
+  } else if (bnNEVM.gt(bnSYS) && bnNEVM.sub(bnSYS).gt(target)) {
+    const bnBurnAmount = bnNEVM.sub(half).toString()
+    console.log('try burnNEVMToSYSX bnBurnAmount ' + bnBurnAmount.toString())
     // go from NEVM -> SYSX -> SYS
     const balanceWIP = new BalanceWIP()
     balanceWIP.srctxid = await txController.burnNEVMToSYSX(bnBurnAmount.toString())
@@ -265,3 +268,4 @@ exports.balanceAdjust = async function () {
     }
   }
 }
+export default new TimerController()

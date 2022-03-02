@@ -1,5 +1,5 @@
 // completeModel.js
-const mongoose = require('mongoose')
+import mongoose from 'mongoose'
 // Setup schema
 const completeSchema = mongoose.Schema({
   srctxid: {
@@ -16,13 +16,20 @@ const completeSchema = mongoose.Schema({
     required: true,
     unique: true
   },
+  amount: {
+    type: String,
+    required: true
+  },
+  dstaddress: {
+    type: String,
+    required: true
+  },
   create_date: {
     type: Date,
     default: Date.now
   }
 })
 // Export Complete model
-const Complete = module.exports = mongoose.model('complete', completeSchema)
-module.exports.get = function (callback, limit) {
-  Complete.find(callback).limit(limit)
-}
+const Complete = mongoose.model('complete', completeSchema)
+
+export default Complete

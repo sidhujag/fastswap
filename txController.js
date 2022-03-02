@@ -1,22 +1,77 @@
-import rconfig from './SyscoinRelayI'
+import rconfig from './SyscoinRelayI.js'
 import { getProof } from 'bitcoin-proof'
-import web3 from './web3'
-import sjs from './syscoinjs'
-import CONFIGURATION from './config'
-import erc20Managerabi from '../SyscoinERC20Manager'
+import web3 from './web3.js'
+import syscoinjs from './syscoinjs.js'
+import sjs from 'syscoinjs-lib'
+import CONFIGURATION from './config.js'
+import erc20Managerabi from './SyscoinERC20Manager.js'
+function TxController () {
+}
 // txController.js
-exports.sysToSysx = async function (amount) {
+TxController.prototype.isString = function (s) {
+  return (typeof s === 'string' || s instanceof String)
+}
+TxController.prototype.toBaseUnit = function (value, decimals, BN) {
+  if (!this.isString(value)) {
+    console.error('Pass strings to prevent floating point precision issues.')
+    return
+  }
+  const ten = new BN(10)
+  const base = ten.pow(new BN(decimals))
+
+  // Is it negative?
+  const negative = (value.substring(0, 1) === '-')
+  if (negative) {
+    value = value.substring(1)
+  }
+
+  if (value === '.') {
+    console.error(
+    `Invalid value ${value} cannot be converted to` +
+    ` base unit with ${decimals} decimals.`)
+    return
+  }
+
+  // Split it into a whole and fractional part
+  const comps = value.split('.')
+  if (comps.length > 2) { console.error('Too many decimal points'); return }
+
+  let whole = comps[0]; let fraction = comps[1]
+
+  if (!whole) { whole = '0' }
+  if (!fraction) { fraction = '0' }
+  if (fraction.length > decimals) {
+    console.error('Too many decimal places')
+    return
+  }
+
+  while (fraction.length < decimals) {
+    fraction += '0'
+  }
+
+  whole = new BN(whole)
+  fraction = new BN(fraction)
+  let wei = (whole.mul(base)).add(fraction)
+
+  if (negative) {
+    wei = wei.neg()
+  }
+
+  return new BN(wei.toString(10), 10)
+}
+TxController.prototype.sysToSysx = async function (amount) {
+  const burnAmount = this.toBaseUnit(web3.utils.fromWei(amount, 'ether'), 8, web3.utils.BN).toString()
   const feeRate = new sjs.utils.BN(10)
   const txOpts = { rbf: true }
   const assetMap = new Map([
-    [CONFIGURATION.SYSXAsset, { changeAddress: CONFIGURATION.SYSADDRESS, outputs: [{ value: new sjs.utils.BN(amount), address: CONFIGURATION.SYSADDRESS }] }]
+    [CONFIGURATION.SYSXAsset, { changeAddress: CONFIGURATION.SYSADDRESS, outputs: [{ value: new sjs.utils.BN(burnAmount), address: CONFIGURATION.SYSADDRESS }] }]
   ])
-  const result = await sjs.syscoinBurnToAssetAllocation(txOpts, assetMap, CONFIGURATION.SYSADDRESS, feeRate, CONFIGURATION.SYSADDRESS)
+  const result = await syscoinjs.syscoinBurnToAssetAllocation(txOpts, assetMap, CONFIGURATION.SYSADDRESS, feeRate, CONFIGURATION.SYSADDRESS)
   if (!result || !result.psbt) {
     console.log('sysToSysx syscoinBurnToAssetAllocation failed')
     return null
   }
-  const psbt = await sjs.signAndSendWithWIF(result.psbt, CONFIGURATION.SYSKEY, result.assets)
+  const psbt = await syscoinjs.signAndSendWithWIF(result.psbt, CONFIGURATION.SYSKEY, result.assets)
   if (!psbt) {
     console.log('sysToSysx signAndSendWithWIF failed')
     return null
@@ -28,20 +83,21 @@ exports.sysToSysx = async function (amount) {
   }
   return tx.getId()
 }
-exports.sysxToSys = async function (amount) {
+TxController.prototype.sysxToSys = async function (amount) {
+  const burnAmount = this.toBaseUnit(web3.utils.fromWei(amount, 'ether'), 8, web3.utils.BN).toString()
   const feeRate = new sjs.utils.BN(10)
   const txOpts = { rbf: true }
   // empty ethaddress means burning SYSX to SYS
   const assetOpts = { ethaddress: Buffer.from('') }
   const assetMap = new Map([
-    [CONFIGURATION.SYSXAsset, { changeAddress: CONFIGURATION.SYSADDRESS, outputs: [{ value: new sjs.utils.BN(amount), address: CONFIGURATION.SYSADDRESS }] }]
+    [CONFIGURATION.SYSXAsset, { changeAddress: CONFIGURATION.SYSADDRESS, outputs: [{ value: new sjs.utils.BN(burnAmount), address: CONFIGURATION.SYSADDRESS }] }]
   ])
-  const result = await sjs.assetAllocationBurn(assetOpts, txOpts, assetMap, CONFIGURATION.SYSADDRESS, feeRate, CONFIGURATION.SYSADDRESS)
+  const result = await syscoinjs.assetAllocationBurn(assetOpts, txOpts, assetMap, CONFIGURATION.SYSADDRESS, feeRate, CONFIGURATION.SYSADDRESS)
   if (!result || !result.psbt) {
     console.log('sysxToSys assetAllocationBurn failed')
     return null
   }
-  const psbt = await sjs.signAndSendWithWIF(result.psbt, CONFIGURATION.SYSKEY, result.assets)
+  const psbt = await syscoinjs.signAndSendWithWIF(result.psbt, CONFIGURATION.SYSKEY, result.assets)
   if (!psbt) {
     console.log('sysxToSys signAndSendWithWIF failed')
     return null
@@ -53,19 +109,20 @@ exports.sysxToSys = async function (amount) {
   }
   return tx.getId()
 }
-exports.burnSYSXToNEVM = async function (amount) {
+TxController.prototype.burnSYSXToNEVM = async function (amount) {
+  const burnAmount = this.toBaseUnit(web3.utils.fromWei(amount, 'ether'), 8, web3.utils.BN).toString()
   const feeRate = new sjs.utils.BN(10)
   const txOpts = { rbf: true }
   const assetOpts = { ethaddress: Buffer.from(CONFIGURATION.NEVMADDRESS, 'hex') }
   const assetMap = new Map([
-    [CONFIGURATION.SYSXAsset, { changeAddress: CONFIGURATION.SYSADDRESS, outputs: [{ value: new sjs.utils.BN(amount), address: CONFIGURATION.SYSADDRESS }] }]
+    [CONFIGURATION.SYSXAsset, { changeAddress: CONFIGURATION.SYSADDRESS, outputs: [{ value: new sjs.utils.BN(burnAmount), address: CONFIGURATION.SYSADDRESS }] }]
   ])
-  const result = await sjs.assetAllocationBurn(assetOpts, txOpts, assetMap, CONFIGURATION.SYSADDRESS, feeRate, CONFIGURATION.SYSADDRESS)
+  const result = await syscoinjs.assetAllocationBurn(assetOpts, txOpts, assetMap, CONFIGURATION.SYSADDRESS, feeRate, CONFIGURATION.SYSADDRESS)
   if (!result || !result.psbt) {
     console.log('burnSYSXToNEVM assetAllocationBurn failed')
     return null
   }
-  const psbt = await sjs.signAndSendWithWIF(result.psbt, CONFIGURATION.SYSKEY, result.assets)
+  const psbt = await syscoinjs.signAndSendWithWIF(result.psbt, CONFIGURATION.SYSKEY, result.assets)
   if (!psbt) {
     console.log('burnSYSXToNEVM signAndSendWithWIF failed')
     return null
@@ -77,7 +134,7 @@ exports.burnSYSXToNEVM = async function (amount) {
   }
   return tx.getId()
 }
-exports.burnNEVMToSYSX = async function (amount) {
+TxController.prototype.burnNEVMToSYSX = async function (amount) {
   const SyscoinERC20Manager = new web3.eth.Contract(erc20Managerabi, CONFIGURATION.ERC20Manager)
   if (!SyscoinERC20Manager || !SyscoinERC20Manager.methods || !SyscoinERC20Manager.methods.freezeBurnERC20) {
     return null
@@ -99,7 +156,7 @@ exports.burnNEVMToSYSX = async function (amount) {
   }
   return hash
 }
-exports.getProofs = async function (txid) {
+TxController.prototype.getProofs = async function (txid) {
   const ret = {}
   try {
     let results = await sjs.utils.fetchBackendSPVProof(CONFIGURATION.BlockbookAPIURL, txid)
@@ -128,8 +185,8 @@ exports.getProofs = async function (txid) {
   }
   return ret
 }
-exports.mintNEVM = async function (txid) {
-  const paramObj = await this.getProofs(txid)
+TxController.prototype.mintNEVM = async function (txid, obj) {
+  const paramObj = await obj.getProofs(txid)
   if (paramObj.error) {
     return null
   }
@@ -156,7 +213,13 @@ exports.mintNEVM = async function (txid) {
   for (let i = 0; i < merkleProof.sibling.length; i++) {
     merkleProof.sibling[i] = '0x' + merkleProof.sibling[i]
   }
-  const nevmBlock = await web3.eth.getBlock('0x' + nevmblockhash)
+  let nevmBlock
+  try {
+    nevmBlock = await web3.eth.getBlock('0x' + nevmblockhash)
+  } catch (e) {
+    console.log('mintNEVM web3.eth.getBlock: ' + e.message)
+    return null
+  }
   if (!nevmBlock) {
     console.log('mintNEVM web3.eth.getBlock failed')
     return null
@@ -179,7 +242,7 @@ exports.mintNEVM = async function (txid) {
   }
   return hash
 }
-exports.mintSYSX = async function (srctxid) {
+TxController.prototype.mintSYSX = async function (srctxid) {
   const feeRate = new sjs.utils.BN(10)
   const txOpts = { rbf: true }
   // web3 URL + ID and nevm burn txid
@@ -189,12 +252,12 @@ exports.mintSYSX = async function (srctxid) {
   }
   // will be auto filled based on ethtxid eth-proof
   const assetMap = null
-  const result = await sjs.assetAllocationMint(assetOpts, txOpts, assetMap, CONFIGURATION.SYSADDRESS, feeRate, CONFIGURATION.SYSADDRESS)
+  const result = await syscoinjs.assetAllocationMint(assetOpts, txOpts, assetMap, CONFIGURATION.SYSADDRESS, feeRate, CONFIGURATION.SYSADDRESS)
   if (!result || !result.psbt) {
     console.log('mintSYSX assetAllocationMint failed')
     return null
   }
-  const psbt = await sjs.signAndSendWithWIF(result.psbt, CONFIGURATION.SYSKEY, result.assets)
+  const psbt = await syscoinjs.signAndSendWithWIF(result.psbt, CONFIGURATION.SYSKEY, result.assets)
   if (!psbt) {
     console.log('mintSYSX signAndSendWithWIF failed')
     return null
@@ -206,18 +269,19 @@ exports.mintSYSX = async function (srctxid) {
   }
   return tx.getId()
 }
-exports.sendSys = async function (address, amount) {
+TxController.prototype.sendSys = async function (address, amount) {
+  const burnAmount = this.toBaseUnit(web3.utils.fromWei(amount, 'ether'), 8, web3.utils.BN).toString()
   const feeRate = new sjs.utils.BN(10)
   const txOpts = { rbf: true }
   const outputsArr = [
-    { address: address, value: new sjs.utils.BN(amount) }
+    { address: address, value: new sjs.utils.BN(burnAmount) }
   ]
-  const result = await sjs.createTransaction(txOpts, CONFIGURATION.SYSADDRESS, outputsArr, feeRate, CONFIGURATION.SYSADDRESS)
+  const result = await syscoinjs.createTransaction(txOpts, CONFIGURATION.SYSADDRESS, outputsArr, feeRate, CONFIGURATION.SYSADDRESS)
   if (!result || !result.psbt) {
     console.log('sendSys createTransaction failed')
     return null
   }
-  const psbt = await sjs.signAndSendWithWIF(result.psbt, CONFIGURATION.SYSKEY, result.assets)
+  const psbt = await syscoinjs.signAndSendWithWIF(result.psbt, CONFIGURATION.SYSKEY, result.assets)
   if (!psbt) {
     console.log('sendSys signAndSendWithWIF failed')
     return null
@@ -229,7 +293,7 @@ exports.sendSys = async function (address, amount) {
   }
   return tx.getId()
 }
-exports.sendNEVM = async function (address, amount) {
+TxController.prototype.sendNEVM = async function (address, amount) {
   let hash
   try {
     hash = await new Promise((resolve, reject) => {
@@ -250,10 +314,10 @@ exports.sendNEVM = async function (address, amount) {
   }
   return hash
 }
-exports.sysChainlocked = async function (srctxid) {
-  const res = await this.getProofs(srctxid)
+TxController.prototype.sysChainlocked = async function (srctxid, obj) {
+  const res = await obj.getProofs(srctxid)
   if (!res || res.error || !res.chainlock) {
-    console.log('sysChainlocked this.getProofs failed')
+    console.log('sysChainlocked obj.getProofs failed')
     return false
   }
   return true
@@ -263,27 +327,35 @@ exports.sysChainlocked = async function (srctxid) {
 // 3) fetch utxo block via spvproof rpc
 // 4) check chainlocked
 // 5) check nevm blockhash matches
-exports.NEVMChainlocked = async function (srctxid) {
-  const srctx = await web3.eth.getTransaction(srctxid)
+TxController.prototype.NEVMChainlocked = async function (srctxid, obj) {
+  let srctx
+  try {
+    srctx = await web3.eth.getTransaction(srctxid)
+  } catch (e) {
+    console.log('NEVMChainlocked web3.eth.getTransaction: ' + e.message)
+    return false
+  }
   if (!srctx) {
     console.log('NEVMChainlocked web3.eth.getTransaction failed')
     return false
   }
   const utxoChainHeight = (srctx.blockNumber + CONFIGURATION.NEVMBlockHeight) - 1
   const block = await sjs.utils.fetchBackendBlock(CONFIGURATION.BlockbookAPIURL, utxoChainHeight)
-  if (!block || !block.txs || !block.length) {
+  if (!block || !block.txs || !block.txs.length) {
     console.log('NEVMChainlocked fetchBackendBlock failed')
     return false
   }
-  const coinbaseTxid = block.tx[0].txid
-  const res = await this.getProofs(coinbaseTxid)
+  const coinbaseTxid = block.txs[0].txid
+  const res = await obj.getProofs(coinbaseTxid)
   if (!res || res.error || !res.chainlock) {
-    console.log('NEVMChainlocked this.getProofs failed')
+    console.log('NEVMChainlocked obj.getProofs failed')
     return false
   }
-  if (res.nevm_blockhash !== srctx.blockHash) {
+  const nevmBlockhash = '0x' + res.nevm_blockhash
+  if (nevmBlockhash !== srctx.blockHash) {
     console.log('NEVMChainlocked blockhash mismatch')
     return false
   }
   return true
 }
+export default new TxController()

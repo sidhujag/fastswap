@@ -1,31 +1,32 @@
 // balanceWIPController.js
 
 // Import balance model
-const BalanceWIP = require('./balanceWIPModel')
+import BalanceWIP from './balanceWIPModel.js'
+class BalanceWIPController {
+}
 // Handle index actions
-exports.index = function (req, res) {
-  BalanceWIP.get(function (err, balanceEntry) {
-    if (err) {
-      res.json({
-        status: 'error',
-        message: err
-      })
-    }
+BalanceWIPController.prototype.index = async function (req, res) {
+  try {
+    const balanceEntry = await BalanceWIP.find({}).limit(100).exec()
     res.json({
       status: 'success',
       message: 'Balance WIP retrieved successfully',
       data: balanceEntry
     })
-  })
-}
-exports.update = async function (balanceWIPEntry) {
-  try {
-    await new Promise((resolve, reject) => {
-      balanceWIPEntry.save(function (err) {
-        if (err) { reject(err) }
-        resolve()
-      })
+  } catch (e) {
+    res.json({
+      status: 'error',
+      message: e
     })
+  }
+}
+BalanceWIPController.prototype.update = async function (balanceWIPEntry) {
+  try {
+    const balance = await balanceWIPEntry.save()
+    if (!balanceWIPEntry !== balance) {
+      console.log('BalanceWIPController not saved')
+      return false
+    }
   } catch (error) {
     console.log('BalanceWIPController update failed: ' + error.message)
     return false
@@ -33,8 +34,8 @@ exports.update = async function (balanceWIPEntry) {
   return true
 }
 // Handle view wip info
-exports.view = function (req, res) {
-  BalanceWIP.find({ srctxid: req.params.srctxid }, function (err, wipEntry) {
+BalanceWIPController.prototype.view = function (req, res) {
+  BalanceWIP.findOne({ srctxid: req.params.srctxid }, function (err, wipEntry) {
     if (err) {
       res.send(err)
     } else {
@@ -45,10 +46,21 @@ exports.view = function (req, res) {
     }
   })
 }
-exports.delete = async function (srctxid) {
+BalanceWIPController.prototype.delete = async function (srctxid) {
+  let balanceEntry
+  try {
+    balanceEntry = await BalanceWIP.findOne({ srctxid: srctxid }).exec()
+  } catch (e) {
+    console.log('balanceEntry not found: ' + e.message)
+    return false
+  }
+  // if doesn't exist don't try to delete it
+  if (!balanceEntry) {
+    return true
+  }
   try {
     await new Promise((resolve, reject) => {
-      BalanceWIP.remove({
+      BalanceWIP.deleteOne({
         srctxid: srctxid
       }, function (err) {
         if (err) { reject(err) }
@@ -61,3 +73,4 @@ exports.delete = async function (srctxid) {
   }
   return true
 }
+export default new BalanceWIPController()

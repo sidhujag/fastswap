@@ -1,5 +1,5 @@
 // balanceWIPModel.js
-const mongoose = require('mongoose')
+import mongoose from 'mongoose'
 // Setup schema
 const balanceWIPSchema = mongoose.Schema({
   srctxid: {
@@ -27,7 +27,5 @@ const balanceWIPSchema = mongoose.Schema({
   }
 })
 // Export BalanceWIP model
-const BalanceWIP = module.exports = mongoose.model('balancewip', balanceWIPSchema)
-module.exports.get = function (callback, limit) {
-  BalanceWIP.find(callback).limit(limit)
-}
+const BalanceWIP = mongoose.model('balancewip', balanceWIPSchema)
+export default BalanceWIP

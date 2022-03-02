@@ -1,5 +1,5 @@
 // wipModel.js
-const mongoose = require('mongoose')
+import mongoose from 'mongoose'
 // Setup schema
 const wipSchema = mongoose.Schema({
   srctxid: {
@@ -34,7 +34,5 @@ const wipSchema = mongoose.Schema({
   }
 })
 // Export WIP model
-const WIP = module.exports = mongoose.model('wip', wipSchema)
-module.exports.get = function (callback, limit) {
-  WIP.find(callback).limit(limit)
-}
+const WIP = mongoose.model('wip', wipSchema)
+export default WIP

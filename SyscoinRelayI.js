@@ -1,4 +1,4 @@
-import CONFIGURATION from './config'
+import CONFIGURATION from './config.js'
 const address = CONFIGURATION.RelayContract
 const abi = [
   {

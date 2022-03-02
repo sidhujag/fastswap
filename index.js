@@ -1,23 +1,26 @@
-import CONFIGURATION from './config'
+import CONFIGURATION from './config.js'
 // Import express
-const express = require('express')
+import express from 'express'
 // Import Body parser
-const bodyParser = require('body-parser')
+import bodyParser from 'body-parser'
 // Import Mongoose
-const mongoose = require('mongoose')
-const timerController = require('./timerController')
+import mongoose from 'mongoose'
+import timerController from './timerController.js'
+// Import routes
+import apiRoutes from './api-routes.js'
+import cors from 'cors'
+
 // Initialize the app
 const app = express()
-
-// Import routes
-const apiRoutes = require('./api-routes')
+app.use(cors())
 // Configure bodyparser to handle post requests
 app.use(bodyParser.urlencoded({
   extended: true
 }))
 app.use(bodyParser.json())
 // Connect to Mongoose and set connection variable
-mongoose.connect('mongodb://localhost/fastswap', { useNewUrlParser: true })
+mongoose.connect('mongodb://127.0.0.1:' + CONFIGURATION.MONGOOSEPORT + '/fastswap', { useNewUrlParser: true, useUnifiedTopology: true })
+  .catch(error => console.log('mongoose error: ' + error))
 
 const db = mongoose.connection
 

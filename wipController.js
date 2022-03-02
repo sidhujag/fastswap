@@ -1,63 +1,61 @@
 // wipController.js
-import web3 from './web3'
-import sjs from './syscoinjs'
-import CONFIGURATION from './config'
-const bitcoin = require('bitcoinjs-lib')
+import web3 from './web3.js'
+import sjs from 'syscoinjs-lib'
+import CONFIGURATION from './config.js'
 // Import wip model
-const WIP = require('./wipModel')
+import WIP from './wipModel.js'
 // Import complete model
-const Complete = require('./completeModel')
-const balanceController = require('./balanceController')
+import Complete from './completeModel.js'
+import Balance from './balanceModel.js'
+const COINSYS = web3.utils.toBN('100000000')
+const COINNEVM = web3.utils.toBN(web3.utils.toWei('1'))
+class WIPController {
+}
 // Handle index actions
-exports.index = function (req, res) {
-  WIP.get(function (err, wipEntry) {
-    if (err) {
-      res.json({
-        status: 'error',
-        message: err
-      })
-    }
+WIPController.prototype.index = async function (req, res) {
+  try {
+    const wipEntry = await WIP.find({}).limit(100).exec()
     res.json({
       status: 'success',
       data: wipEntry
     })
-  })
+    return
+  } catch (e) {
+    res.json({
+      status: 'error',
+      message: e
+    })
+  }
 }
 // Handle create wip actions
-exports.new = async function (req, res) {
+WIPController.prototype.new = async function (req, res) {
   const wip = new WIP()
-  wip.srctxid = req.body.txid ? req.body.txid : wip.srctxid
-  if (!req.body.type) {
+  if (!req.body.txid) {
     res.json({
       status: 'error',
-      data: "type not defined as 'utxo' or 'nevm'"
+      data: 'txid not defined'
     })
     return
   }
-  if (!req.body.dstaddress) {
-    res.json({
-      status: 'error',
-      data: 'dstaddress not defined'
-    })
-    return
-  }
-  wip.dstaddress = req.body.dstaddress
+  wip.srctxid = req.body.txid
   let balanceEntry
+  let amountBN
   try {
-    balanceEntry = await new Promise((resolve, reject) => {
-      balanceController.index(function (err, balanceEntry) {
-        if (err) {
-          reject(err)
-        } else {
-          resolve(balanceEntry)
-        }
-      })
+    balanceEntry = await Balance.findOne({}).exec()
+  } catch (e) {
+    res.json({
+      status: 'error',
+      data: e.message
     })
-  } catch (error) {
-    console.log('WIPController:balanceController new failed: ' + error.message)
     return
   }
-
+  if (!balanceEntry) {
+    res.json({
+      status: 'error',
+      data: 'No balance found in treasury'
+    })
+    return
+  }
   /* Tx must send coins to specific address and nowhere else.. basic transfer enforced.
         - ensure srctxid doesn't exist in WIP or Complete DB
         - must be basic transfer sys or nevm transfer.
@@ -65,201 +63,281 @@ exports.new = async function (req, res) {
         - Amount is found in tx, dstaddress found in call data or opreturn must be valid of opposite type
         - amount must be less than max amount based on type and more than min amount(config)
         Accept sys or nevm sys */
+
+  let result
   try {
-    await new Promise((resolve, reject) => {
-      WIP.find({ $or: [{ srctxid: wip.srctxid }, { dsttxid: wip.srctxid }] }, async function (err, wipEntry) {
-        if (!err) {
-          res.json({
-            status: 'error',
-            data: 'Already exists'
-          })
-          reject(err)
-        } else {
-          Complete.find({ $or: [{ srctxid: wip.srctxid }, { dsttxid: wip.srctxid }] }, async function (err, completeEntry) {
-            if (!err) {
-              res.json({
-                status: 'error',
-                data: 'Already complete'
-              })
-              reject(new Error('Already complete'))
-            } else {
-              let amount = '0'
-              // if nevm then destination is utxo
-              if (req.body.type === 'nevm') {
-                const srctx = await web3.eth.getTransaction(wip.srctxid)
-                if (!srctx) {
-                  res.json({
-                    status: 'error',
-                    data: 'Invalid NEVM transaction'
-                  })
-                  reject(err)
-                }
-                try {
-                  bitcoin.address.toOutputScript(wip.dstaddress)
-                } catch (e) {
-                  res.json({
-                    status: 'error',
-                    data: 'Invalid SYS recipient'
-                  })
-                  reject(err) // ' has no matching Script'
-                }
-                if (srctx.to !== CONFIGURATION.NEVMADDRESS) {
-                  res.json({
-                    status: 'error',
-                    data: 'NEVM payment not found'
-                  })
-                  reject(err)
-                }
-                if (srctx.from === CONFIGURATION.NEVMADDRESS) {
-                  res.json({
-                    status: 'error',
-                    data: 'NEVM from address cannot be from fast swap service'
-                  })
-                  reject(err)
-                }
-                if (web3.utils.BN(amount).lt(CONFIGURATION.COINNEVM)) {
-                  res.json({
-                    status: 'error',
-                    data: 'Less than minimum accepted value'
-                  })
-                  reject(err)
-                }
-                if (web3.utils.BN(amount).gt(web3.utils.BN(balanceEntry.sysbalance))) {
-                  res.json({
-                    status: 'error',
-                    data: 'Insufficient SYS balance'
-                  })
-                  reject(err)
-                }
-                // if utxo then destination is nevm
-              } else if (req.body.type === 'utxo') {
-                const srctx = await sjs.utils.fetchBackendRawTx(CONFIGURATION.BlockbookAPIURL, wip.srctxid)
-                if (!srctx) {
-                  res.json({
-                    status: 'error',
-                    data: 'Invalid Syscoin transaction'
-                  })
-                  reject(err)
-                }
-                if (!web3.utils.isAddress(wip.dstaddress)) {
-                  res.json({
-                    status: 'error',
-                    data: 'Invalid NEVM recipient'
-                  })
-                  reject(err)
-                }
-                let foundPayment = false
-                for (const vout of srctx.vout) {
-                  if (vout && vout.addressses) {
-                    for (const address of vout.addressses) {
-                      if (address === CONFIGURATION.SYSADDRESS) {
-                        foundPayment = true
-                        amount = vout.value
-                        break
-                      }
-                    }
-                  } else {
-                    res.json({
-                      status: 'error',
-                      data: 'Syscoin output addresses not found'
-                    })
-                    reject(err)
-                  }
-                }
-                for (const vin of srctx.vin) {
-                  if (vin && vin.addressses) {
-                    for (const address of vin.addressses) {
-                      if (address === CONFIGURATION.SYSADDRESS) {
-                        res.json({
-                          status: 'error',
-                          data: 'Syscoin input cannot come from fast swap service address'
-                        })
-                        reject(err)
-                      }
-                    }
-                  } else {
-                    res.json({
-                      status: 'error',
-                      data: 'Syscoin input addresses not found'
-                    })
-                    reject(err)
-                  }
-                }
-                if (!foundPayment) {
-                  res.json({
-                    status: 'error',
-                    data: 'Syscoin payment not found'
-                  })
-                  reject(err)
-                }
-                if (web3.utils.BN(amount).lt(CONFIGURATION.COINSYS)) {
-                  res.json({
-                    status: 'error',
-                    data: 'Less than minimum accepted value'
-                  })
-                  reject(err)
-                }
-                if (web3.utils.BN(amount).mul(web3.utils.BN((Math.pow(10, 10)))).gt(web3.utils.BN(balanceEntry.nevmbalance))) {
-                  res.json({
-                    status: 'error',
-                    data: 'Insufficient NEVM balance'
-                  })
-                  reject(err)
-                }
-              }
-              wip.status = 1
-              wip.type = req.body.type
-              wip.amount = amount
-              // save the contact and check for errors
-              wip.save(function (err) {
-                // Check for validation error
-                if (err) { res.json(err) } else {
-                  res.json({
-                    status: 'success',
-                    data: wip
-                  })
-                  resolve()
-                }
-              })
-            }
-          })
-        }
-      })
+    result = await WIP.findOne({ $or: [{ srctxid: wip.srctxid }, { dsttxid: wip.srctxid }] }).exec()
+  } catch (e) {
+    res.json({
+      status: 'error',
+      data: e.message
     })
-  } catch (error) {
-    console.log('WIPController new failed: ' + error.message)
+    return
+  }
+  if (result) {
+    res.json({
+      status: 'success',
+      data: result
+    })
+    return
+  }
+
+  try {
+    result = await Complete.findOne({ $or: [{ srctxid: wip.srctxid }, { dsttxid: wip.srctxid }] }).exec()
+  } catch (e) {
+    res.json({
+      status: 'error',
+      data: e.message
+    })
+    return
+  }
+
+  if (result) {
+    res.json({
+      status: 'success',
+      data: result
+    })
+    return
+  }
+  let amount = '0'
+  let srctx
+  try {
+    srctx = await web3.eth.getTransaction(wip.srctxid)
+  } catch (e) {
+    srctx = null
+  }
+  if (srctx) {
+    wip.type = 'nevm'
+  }
+  if (!srctx) {
+    try {
+      srctx = await sjs.utils.fetchBackendRawTx(CONFIGURATION.BlockbookAPIURL, wip.srctxid)
+    } catch (e) {
+      res.json({
+        status: 'error',
+        data: e.message
+      })
+      return
+    }
+    if (!srctx) {
+      res.json({
+        status: 'error',
+        data: 'Invalid Syscoin transaction'
+      })
+      return
+    }
+    wip.type = 'utxo'
+  }
+  // if nevm then destination is utxo
+  if (wip.type === 'nevm') {
+    if (!srctx.input) {
+      res.json({
+        status: 'error',
+        data: 'No destination address defined in transaction input data'
+      })
+      return
+    }
+    wip.dstaddress = web3.utils.hexToAscii(srctx.input)
+    try {
+      sjs.utils.bitcoinjs.address.toOutputScript(wip.dstaddress, CONFIGURATION.SysNetwork)
+    } catch (e) {
+      res.json({
+        status: 'error',
+        data: 'Invalid SYS recipient'
+      })
+      return
+    }
+    if (srctx.to !== CONFIGURATION.NEVMADDRESS) {
+      res.json({
+        status: 'error',
+        data: 'NEVM payment not found'
+      })
+      return
+    }
+    if (srctx.from === CONFIGURATION.NEVMADDRESS) {
+      res.json({
+        status: 'error',
+        data: 'NEVM from address cannot be from fast swap service'
+      })
+      return
+    }
+    amountBN = web3.utils.toBN(srctx.value)
+    if (amountBN.lt(COINNEVM)) {
+      res.json({
+        status: 'error',
+        data: 'Less than minimum accepted value'
+      })
+      return
+    }
+    if (amountBN.gt(web3.utils.toBN(balanceEntry.sysbalance))) {
+      res.json({
+        status: 'error',
+        data: 'Insufficient SYS balance'
+      })
+      return
+    }
+    // if utxo then destination is nevm
+  } else if (wip.type === 'utxo') {
+    if (!srctx.hex) {
+      res.json({
+        status: 'error',
+        data: 'Could not decode transaction from hex'
+      })
+      return
+    }
+    const tx = sjs.utils.bitcoinjs.Transaction.fromHex(srctx.hex)
+    if (!tx) {
+      res.json({
+        status: 'error',
+        data: 'Could not parse transaction from hex'
+      })
+      return
+    }
+    const memo = sjs.utils.getMemoFromOpReturn(tx.outs, CONFIGURATION.MEMOHEADER)
+    if (!memo) {
+      res.json({
+        status: 'error',
+        data: 'No destination address defined in transaction OPRETURN data'
+      })
+      return
+    }
+    wip.dstaddress = memo
+    if (!web3.utils.isAddress(wip.dstaddress)) {
+      res.json({
+        status: 'error',
+        data: 'Invalid NEVM recipient'
+      })
+      return
+    }
+    let foundPayment = false
+    for (const vout of srctx.vout) {
+      if (vout && vout.addresses) {
+        for (const address of vout.addresses) {
+          if (address === CONFIGURATION.SYSADDRESS) {
+            foundPayment = true
+            amount = vout.value
+            break
+          }
+        }
+      } else {
+        res.json({
+          status: 'error',
+          data: 'Syscoin output addresses not found'
+        })
+        return
+      }
+    }
+    for (const vin of srctx.vin) {
+      if (vin && vin.addresses) {
+        for (const address of vin.addresses) {
+          if (address === CONFIGURATION.SYSADDRESS) {
+            res.json({
+              status: 'error',
+              data: 'Syscoin input cannot come from fast swap service address'
+            })
+            return
+          }
+        }
+      } else {
+        res.json({
+          status: 'error',
+          data: 'Syscoin input addresses not found'
+        })
+        return
+      }
+    }
+    if (!foundPayment) {
+      res.json({
+        status: 'error',
+        data: 'Syscoin payment not found'
+      })
+      return
+    }
+    amountBN = web3.utils.toBN(amount)
+    if (amountBN.lt(COINSYS)) {
+      res.json({
+        status: 'error',
+        data: 'Less than minimum accepted value'
+      })
+      return
+    }
+    const amountMultiplierBN = web3.utils.toBN(Math.pow(10, 10))
+    const nevmBalanceBN = web3.utils.toBN(balanceEntry.nevmbalance)
+    amountBN = amountBN.mul(amountMultiplierBN)
+    if (amountBN.gt(nevmBalanceBN)) {
+      res.json({
+        status: 'error',
+        data: 'Insufficient NEVM balance'
+      })
+      return
+    }
+  }
+  wip.status = 1
+  wip.amount = amountBN.toString()
+  // save the contact and check for errors
+  try {
+    result = await wip.save()
+  } catch (e) {
+    res.json({
+      status: 'error',
+      data: e.message
+    })
+    return
+  }
+  // Check for validation error
+  if (result !== wip) {
+    res.json({
+      status: 'error',
+      data: 'Could not save WIP'
+    })
+  } else {
+    res.json({
+      status: 'success',
+      data: wip
+    })
   }
 }
 // Handle view wip info
-exports.view = function (req, res) {
-  WIP.find({ $or: [{ srctxid: req.params.txid }, { dsttxid: req.params.txid }] }, function (err, wipEntry) {
-    if (err) {
-      Complete.find({ $or: [{ srctxid: req.params.txid }, { dsttxid: req.params.txid }] }, function (err, completeEntry) {
-        if (err) {
-          res.send(err)
-        } else {
-          res.json({
-            status: 'success',
-            data: completeEntry
-          })
-        }
-      })
-    } else {
+WIPController.prototype.view = async function (req, res) {
+  try {
+    const wipEntry = await WIP.findOne({ $or: [{ srctxid: req.params.txid }, { dsttxid: req.params.txid }] }).exec()
+    if (wipEntry) {
       res.json({
         status: 'success',
         data: wipEntry
       })
+      return
     }
-  })
-}
-exports.update = async function (wipEntry) {
-  try {
-    await new Promise((resolve, reject) => {
-      wipEntry.save(function (err) {
-        if (err) { reject(err) }
-        resolve()
-      })
+  } catch (e) {
+    res.json({
+      status: 'error',
+      data: e.message
     })
+    return
+  }
+  try {
+    const completeEntry = await Complete.findOne({ $or: [{ srctxid: req.params.txid }, { dsttxid: req.params.txid }] }).exec()
+    if (completeEntry) {
+      res.json({
+        status: 'success',
+        data: completeEntry
+      })
+      return
+    }
+  } catch (e) {
+    res.json({
+      status: 'error',
+      data: e.message
+    })
+  }
+}
+WIPController.prototype.update = async function (wipEntry) {
+  try {
+    const wipObj = await wipEntry.save()
+    if (wipObj !== wipEntry) {
+      console.log('WIPController not saved')
+      return false
+    }
   } catch (error) {
     console.log('WIPController update failed: ' + error.message)
     return false
@@ -267,10 +345,21 @@ exports.update = async function (wipEntry) {
   return true
 }
 // Handle delete wip
-exports.delete = async function (srctxid) {
+WIPController.prototype.delete = async function (srctxid) {
+  let wipEntry
+  try {
+    wipEntry = await WIP.findOne({ srctxid: srctxid }).exec()
+  } catch (e) {
+    console.log('wipEntry not found: ' + e.message)
+    return false
+  }
+  // if doesn't exist don't try to delete it
+  if (!wipEntry) {
+    return true
+  }
   try {
     await new Promise((resolve, reject) => {
-      WIP.remove({
+      WIP.deleteOne({
         srctxid: srctxid
       }, function (err) {
         if (err) { reject(err) }
@@ -283,3 +372,4 @@ exports.delete = async function (srctxid) {
   }
   return true
 }
+export default new WIPController()
