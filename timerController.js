@@ -88,6 +88,7 @@ TimerController.prototype.status = async function () {
             console.log('status == 2 wipController could not delete wipEntry')
             continue
           }
+          updateBalance = true
         }
       }
       if (updateBalance) {
@@ -247,7 +248,7 @@ TimerController.prototype.balanceAdjust = async function () {
       balanceWIP.type = 'utxo'
       balanceWIP.amount = bnBurnAmount.toString()
       console.log('balanceWIPController.update sysToSysx: ' + balanceWIP.amount)
-      await balanceWIPController.update(balanceWIP)
+      await balanceWIPController.save(balanceWIP)
     } else {
       console.log('sysToSysx failed')
     }
@@ -262,7 +263,7 @@ TimerController.prototype.balanceAdjust = async function () {
       balanceWIP.type = 'nevm'
       balanceWIP.amount = bnBurnAmount.toString()
       console.log('balanceWIPController.update burnNEVMToSYSX: ' + balanceWIP.amount)
-      await balanceWIPController.update(balanceWIP)
+      await balanceWIPController.save(balanceWIP)
     } else {
       console.log('burnNEVMToSYSX failed')
     }

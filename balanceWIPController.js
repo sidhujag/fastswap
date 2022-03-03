@@ -23,7 +23,7 @@ BalanceWIPController.prototype.index = async function (req, res) {
 BalanceWIPController.prototype.update = async function (balanceWIPEntry) {
   try {
     const balance = await balanceWIPEntry.save()
-    if (!balanceWIPEntry !== balance) {
+    if (balanceWIPEntry !== balance) {
       console.log('BalanceWIPController not saved')
       return false
     }
@@ -32,6 +32,26 @@ BalanceWIPController.prototype.update = async function (balanceWIPEntry) {
     return false
   }
   return true
+}
+BalanceWIPController.prototype.save = async function (balanceWIPEntry) {
+  let balanceEntry
+  try {
+    balanceEntry = await BalanceWIP.findOne({ srctxid: balanceWIPEntry.srctxid }).exec()
+  } catch (e) {
+    console.log('balanceEntry not found: ' + e.message)
+    return false
+  }
+  if (balanceEntry) {
+    balanceEntry.srctxid = balanceWIPEntry.srctxid
+    balanceEntry.inttxid = balanceWIPEntry.inttxid
+    balanceEntry.dsttxid = balanceWIPEntry.dsttxid
+    balanceEntry.amount = balanceWIPEntry.amount
+    balanceEntry.type = balanceWIPEntry.type
+    balanceEntry.status = balanceWIPEntry.status
+    return await this.update(balanceEntry)
+  } else {
+    return await this.update(balanceWIPEntry)
+  }
 }
 // Handle view wip info
 BalanceWIPController.prototype.view = function (req, res) {

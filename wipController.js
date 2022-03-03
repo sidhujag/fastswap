@@ -344,6 +344,26 @@ WIPController.prototype.update = async function (wipEntry) {
   }
   return true
 }
+WIPController.prototype.save = async function (wipEntryIn) {
+  let wipEntry
+  try {
+    wipEntry = await WIP.findOne({ srctxid: wipEntryIn.srctxid }).exec()
+  } catch (e) {
+    console.log('wipEntry not found: ' + e.message)
+    return false
+  }
+  if (wipEntry) {
+    wipEntry.srctxid = wipEntryIn.srctxid
+    wipEntry.type = wipEntryIn.type
+    wipEntry.dsttxid = wipEntryIn.dsttxid
+    wipEntry.amount = wipEntryIn.amount
+    wipEntry.dstaddress = wipEntryIn.dstaddress
+    wipEntry.status = wipEntryIn.status
+    return await this.update(wipEntry)
+  } else {
+    return await this.update(wipEntryIn)
+  }
+}
 // Handle delete wip
 WIPController.prototype.delete = async function (srctxid) {
   let wipEntry

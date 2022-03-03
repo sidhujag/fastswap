@@ -8,59 +8,8 @@ import erc20Managerabi from './SyscoinERC20Manager.js'
 function TxController () {
 }
 // txController.js
-TxController.prototype.isString = function (s) {
-  return (typeof s === 'string' || s instanceof String)
-}
-TxController.prototype.toBaseUnit = function (value, decimals, BN) {
-  if (!this.isString(value)) {
-    console.error('Pass strings to prevent floating point precision issues.')
-    return
-  }
-  const ten = new BN(10)
-  const base = ten.pow(new BN(decimals))
-
-  // Is it negative?
-  const negative = (value.substring(0, 1) === '-')
-  if (negative) {
-    value = value.substring(1)
-  }
-
-  if (value === '.') {
-    console.error(
-    `Invalid value ${value} cannot be converted to` +
-    ` base unit with ${decimals} decimals.`)
-    return
-  }
-
-  // Split it into a whole and fractional part
-  const comps = value.split('.')
-  if (comps.length > 2) { console.error('Too many decimal points'); return }
-
-  let whole = comps[0]; let fraction = comps[1]
-
-  if (!whole) { whole = '0' }
-  if (!fraction) { fraction = '0' }
-  if (fraction.length > decimals) {
-    console.error('Too many decimal places')
-    return
-  }
-
-  while (fraction.length < decimals) {
-    fraction += '0'
-  }
-
-  whole = new BN(whole)
-  fraction = new BN(fraction)
-  let wei = (whole.mul(base)).add(fraction)
-
-  if (negative) {
-    wei = wei.neg()
-  }
-
-  return new BN(wei.toString(10), 10)
-}
 TxController.prototype.sysToSysx = async function (amount) {
-  const burnAmount = this.toBaseUnit(web3.utils.fromWei(amount, 'ether'), 8, web3.utils.BN).toString()
+  const burnAmount = web3.utils.toBN(amount).div(web3.utils.toBN(Math.pow(10, 10))).toString()
   const feeRate = new sjs.utils.BN(10)
   const txOpts = { rbf: true }
   const assetMap = new Map([
@@ -84,7 +33,7 @@ TxController.prototype.sysToSysx = async function (amount) {
   return tx.getId()
 }
 TxController.prototype.sysxToSys = async function (amount) {
-  const burnAmount = this.toBaseUnit(web3.utils.fromWei(amount, 'ether'), 8, web3.utils.BN).toString()
+  const burnAmount = web3.utils.toBN(amount).div(web3.utils.toBN(Math.pow(10, 10))).toString()
   const feeRate = new sjs.utils.BN(10)
   const txOpts = { rbf: true }
   // empty ethaddress means burning SYSX to SYS
@@ -110,10 +59,11 @@ TxController.prototype.sysxToSys = async function (amount) {
   return tx.getId()
 }
 TxController.prototype.burnSYSXToNEVM = async function (amount) {
-  const burnAmount = this.toBaseUnit(web3.utils.fromWei(amount, 'ether'), 8, web3.utils.BN).toString()
+  const burnAmount = web3.utils.toBN(amount).div(web3.utils.toBN(Math.pow(10, 10))).toString()
   const feeRate = new sjs.utils.BN(10)
   const txOpts = { rbf: true }
-  const assetOpts = { ethaddress: Buffer.from(CONFIGURATION.NEVMADDRESS, 'hex') }
+  const ethAddress = CONFIGURATION.NEVMADDRESS.replace(/^0x/, '')
+  const assetOpts = { ethaddress: Buffer.from(ethAddress, 'hex') }
   const assetMap = new Map([
     [CONFIGURATION.SYSXAsset, { changeAddress: CONFIGURATION.SYSADDRESS, outputs: [{ value: new sjs.utils.BN(burnAmount), address: CONFIGURATION.SYSADDRESS }] }]
   ])
@@ -270,7 +220,7 @@ TxController.prototype.mintSYSX = async function (srctxid) {
   return tx.getId()
 }
 TxController.prototype.sendSys = async function (address, amount) {
-  const burnAmount = this.toBaseUnit(web3.utils.fromWei(amount, 'ether'), 8, web3.utils.BN).toString()
+  const burnAmount = web3.utils.toBN(amount).div(web3.utils.toBN(Math.pow(10, 10))).toString()
   const feeRate = new sjs.utils.BN(10)
   const txOpts = { rbf: true }
   const outputsArr = [
@@ -317,7 +267,6 @@ TxController.prototype.sendNEVM = async function (address, amount) {
 TxController.prototype.sysChainlocked = async function (srctxid, obj) {
   const res = await obj.getProofs(srctxid)
   if (!res || res.error || !res.chainlock) {
-    console.log('sysChainlocked obj.getProofs failed')
     return false
   }
   return true
@@ -348,7 +297,6 @@ TxController.prototype.NEVMChainlocked = async function (srctxid, obj) {
   const coinbaseTxid = block.txs[0].txid
   const res = await obj.getProofs(coinbaseTxid)
   if (!res || res.error || !res.chainlock) {
-    console.log('NEVMChainlocked obj.getProofs failed')
     return false
   }
   const nevmBlockhash = '0x' + res.nevm_blockhash

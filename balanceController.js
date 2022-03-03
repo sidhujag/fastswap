@@ -37,6 +37,22 @@ BalanceController.prototype.update = async function (balanceEntry) {
   }
   return true
 }
+BalanceController.prototype.save = async function (balanceEntryIn) {
+  let balanceEntry
+  try {
+    balanceEntry = await Balance.findOne({ srctxid: balanceEntryIn.srctxid }).exec()
+  } catch (e) {
+    console.log('balanceEntry not found: ' + e.message)
+    return false
+  }
+  if (balanceEntry) {
+    balanceEntry.sysbalance = balanceEntryIn.sysbalance
+    balanceEntry.nevmbalance = balanceEntryIn.nevmbalance
+    return await this.update(balanceEntry)
+  } else {
+    return await this.update(balanceEntryIn)
+  }
+}
 BalanceController.prototype.FetchAndUpdateBalances = async function (obj) {
   const sysAccount = await sjs.utils.fetchBackendAccount(CONFIGURATION.BlockbookAPIURL, CONFIGURATION.SYSADDRESS, '?details=basic')
   const balanceEntry = new Balance()
@@ -57,7 +73,7 @@ BalanceController.prototype.FetchAndUpdateBalances = async function (obj) {
   balanceEntry.sysbalance = balanceEntry.sysbalance.toString()
   balanceEntry.nevmbalance = balanceEntry.nevmbalance.toString()
   console.log('FetchAndUpdateBalances sysbalance: ' + balanceEntry.sysbalance + ' nevmbalance: ' + balanceEntry.nevmbalance)
-  const updateRes = await obj.update(balanceEntry)
+  const updateRes = await obj.save(balanceEntry)
   if (!updateRes) {
     console.log('update failed')
     return null
