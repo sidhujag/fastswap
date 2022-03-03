@@ -8,7 +8,6 @@ import mongoose from 'mongoose'
 import timerController from './timerController.js'
 import balanceController from './balanceController.js'
 // Import routes
-// Import routes
 import apiRoutes from './api-routes.js'
 import cors from 'cors'
 

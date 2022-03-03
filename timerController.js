@@ -101,10 +101,8 @@ TimerController.prototype.balanceWIPStatus = async function () {
   console.log('balanceWIPStatus loop')
   BalanceWIP.find(async function (err, wipEntry) {
     if (!err && wipEntry && wipEntry.length) {
-      console.log('wipEntry.length ' + wipEntry.length)
       let updateBalance = false
       for (const wipObj of wipEntry) {
-        console.log('wipObj ' + JSON.stringify(wipObj))
         // initial state, if utxo send to sysx, if nevm send to sys
         if (wipObj.status === 1) {
           wipObj.status = 2
@@ -216,7 +214,6 @@ TimerController.prototype.balanceAdjust = async function () {
   // check if balanceWIP is in progress if so skip for now...
   const count = await BalanceWIP.estimatedDocumentCount({})
   if (count > 0) {
-    console.log('BalanceWIP.estimatedDocumentCount({}) count ' + count)
     return
   }
   let balanceEntry

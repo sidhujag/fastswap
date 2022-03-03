@@ -15,19 +15,25 @@ TxController.prototype.sysToSysx = async function (amount) {
   const assetMap = new Map([
     [CONFIGURATION.SYSXAsset, { changeAddress: CONFIGURATION.SYSADDRESS, outputs: [{ value: new sjs.utils.BN(burnAmount), address: CONFIGURATION.SYSADDRESS }] }]
   ])
-  const result = await syscoinjs.syscoinBurnToAssetAllocation(txOpts, assetMap, CONFIGURATION.SYSADDRESS, feeRate, CONFIGURATION.SYSADDRESS)
-  if (!result || !result.psbt) {
-    console.log('sysToSysx syscoinBurnToAssetAllocation failed')
-    return null
-  }
-  const psbt = await syscoinjs.signAndSendWithWIF(result.psbt, CONFIGURATION.SYSKEY, result.assets)
-  if (!psbt) {
-    console.log('sysToSysx signAndSendWithWIF failed')
-    return null
-  }
-  const tx = psbt.extractTransaction()
-  if (!tx) {
-    console.log('sysToSysx extractTransaction failed')
+  let tx
+  try {
+    const result = await syscoinjs.syscoinBurnToAssetAllocation(txOpts, assetMap, CONFIGURATION.SYSADDRESS, feeRate, CONFIGURATION.SYSADDRESS)
+    if (!result || !result.psbt) {
+      console.log('sysToSysx syscoinBurnToAssetAllocation failed')
+      return null
+    }
+    const psbt = await syscoinjs.signAndSendWithWIF(result.psbt, CONFIGURATION.SYSKEY, result.assets)
+    if (!psbt) {
+      console.log('sysToSysx signAndSendWithWIF failed')
+      return null
+    }
+    tx = psbt.extractTransaction()
+    if (!tx) {
+      console.log('sysToSysx extractTransaction failed')
+      return null
+    }
+  } catch (e) {
+    console.log('could not create sysToSysx: ' + e.message)
     return null
   }
   return tx.getId()
@@ -41,19 +47,25 @@ TxController.prototype.sysxToSys = async function (amount) {
   const assetMap = new Map([
     [CONFIGURATION.SYSXAsset, { changeAddress: CONFIGURATION.SYSADDRESS, outputs: [{ value: new sjs.utils.BN(burnAmount), address: CONFIGURATION.SYSADDRESS }] }]
   ])
-  const result = await syscoinjs.assetAllocationBurn(assetOpts, txOpts, assetMap, CONFIGURATION.SYSADDRESS, feeRate, CONFIGURATION.SYSADDRESS)
-  if (!result || !result.psbt) {
-    console.log('sysxToSys assetAllocationBurn failed')
-    return null
-  }
-  const psbt = await syscoinjs.signAndSendWithWIF(result.psbt, CONFIGURATION.SYSKEY, result.assets)
-  if (!psbt) {
-    console.log('sysxToSys signAndSendWithWIF failed')
-    return null
-  }
-  const tx = psbt.extractTransaction()
-  if (!tx) {
-    console.log('sysxToSys extractTransaction failed')
+  let tx
+  try {
+    const result = await syscoinjs.assetAllocationBurn(assetOpts, txOpts, assetMap, CONFIGURATION.SYSADDRESS, feeRate, CONFIGURATION.SYSADDRESS)
+    if (!result || !result.psbt) {
+      console.log('sysxToSys assetAllocationBurn failed')
+      return null
+    }
+    const psbt = await syscoinjs.signAndSendWithWIF(result.psbt, CONFIGURATION.SYSKEY, result.assets)
+    if (!psbt) {
+      console.log('sysxToSys signAndSendWithWIF failed')
+      return null
+    }
+    tx = psbt.extractTransaction()
+    if (!tx) {
+      console.log('sysxToSys extractTransaction failed')
+      return null
+    }
+  } catch (e) {
+    console.log('could not create sysxToSys: ' + e.message)
     return null
   }
   return tx.getId()
@@ -67,19 +79,25 @@ TxController.prototype.burnSYSXToNEVM = async function (amount) {
   const assetMap = new Map([
     [CONFIGURATION.SYSXAsset, { changeAddress: CONFIGURATION.SYSADDRESS, outputs: [{ value: new sjs.utils.BN(burnAmount), address: CONFIGURATION.SYSADDRESS }] }]
   ])
-  const result = await syscoinjs.assetAllocationBurn(assetOpts, txOpts, assetMap, CONFIGURATION.SYSADDRESS, feeRate, CONFIGURATION.SYSADDRESS)
-  if (!result || !result.psbt) {
-    console.log('burnSYSXToNEVM assetAllocationBurn failed')
-    return null
-  }
-  const psbt = await syscoinjs.signAndSendWithWIF(result.psbt, CONFIGURATION.SYSKEY, result.assets)
-  if (!psbt) {
-    console.log('burnSYSXToNEVM signAndSendWithWIF failed')
-    return null
-  }
-  const tx = psbt.extractTransaction()
-  if (!tx) {
-    console.log('burnSYSXToNEVM extractTransaction failed')
+  let tx
+  try {
+    const result = await syscoinjs.assetAllocationBurn(assetOpts, txOpts, assetMap, CONFIGURATION.SYSADDRESS, feeRate, CONFIGURATION.SYSADDRESS)
+    if (!result || !result.psbt) {
+      console.log('burnSYSXToNEVM assetAllocationBurn failed')
+      return null
+    }
+    const psbt = await syscoinjs.signAndSendWithWIF(result.psbt, CONFIGURATION.SYSKEY, result.assets)
+    if (!psbt) {
+      console.log('burnSYSXToNEVM signAndSendWithWIF failed')
+      return null
+    }
+    tx = psbt.extractTransaction()
+    if (!tx) {
+      console.log('burnSYSXToNEVM extractTransaction failed')
+      return null
+    }
+  } catch (e) {
+    console.log('could not create burnSYSXToNEVM: ' + e.message)
     return null
   }
   return tx.getId()
@@ -92,7 +110,7 @@ TxController.prototype.burnNEVMToSYSX = async function (amount) {
   let hash
   try {
     hash = await new Promise((resolve, reject) => {
-      SyscoinERC20Manager.methods.freezeBurnERC20(amount, CONFIGURATION.SYSXAsset, CONFIGURATION.SYSADDRESS).send({ from: CONFIGURATION.NEVMADDRESS, gas: 400000, amount })
+      SyscoinERC20Manager.methods.freezeBurnERC20(amount, CONFIGURATION.SYSXAsset, CONFIGURATION.SYSADDRESS).send({ from: CONFIGURATION.NEVMADDRESS, gas: 400000, value: amount })
         .once('transactionHash', (hash) => {
           resolve(hash)
         })
@@ -200,21 +218,27 @@ TxController.prototype.mintSYSX = async function (srctxid) {
     web3url: CONFIGURATION.Web3URL,
     ethtxid: srctxid
   }
+  let tx
   // will be auto filled based on ethtxid eth-proof
-  const assetMap = null
-  const result = await syscoinjs.assetAllocationMint(assetOpts, txOpts, assetMap, CONFIGURATION.SYSADDRESS, feeRate, CONFIGURATION.SYSADDRESS)
-  if (!result || !result.psbt) {
-    console.log('mintSYSX assetAllocationMint failed')
-    return null
-  }
-  const psbt = await syscoinjs.signAndSendWithWIF(result.psbt, CONFIGURATION.SYSKEY, result.assets)
-  if (!psbt) {
-    console.log('mintSYSX signAndSendWithWIF failed')
-    return null
-  }
-  const tx = psbt.extractTransaction()
-  if (!tx) {
-    console.log('mintSYSX extractTransaction failed')
+  try {
+    const assetMap = null
+    const result = await syscoinjs.assetAllocationMint(assetOpts, txOpts, assetMap, CONFIGURATION.SYSADDRESS, feeRate, CONFIGURATION.SYSADDRESS)
+    if (!result || !result.psbt) {
+      console.log('mintSYSX assetAllocationMint failed')
+      return null
+    }
+    const psbt = await syscoinjs.signAndSendWithWIF(result.psbt, CONFIGURATION.SYSKEY, result.assets)
+    if (!psbt) {
+      console.log('mintSYSX signAndSendWithWIF failed')
+      return null
+    }
+    tx = psbt.extractTransaction()
+    if (!tx) {
+      console.log('mintSYSX extractTransaction failed')
+      return null
+    }
+  } catch (e) {
+    console.log('could not create mintSYSX: ' + e.message)
     return null
   }
   return tx.getId()
@@ -226,19 +250,25 @@ TxController.prototype.sendSys = async function (address, amount) {
   const outputsArr = [
     { address: address, value: new sjs.utils.BN(burnAmount) }
   ]
-  const result = await syscoinjs.createTransaction(txOpts, CONFIGURATION.SYSADDRESS, outputsArr, feeRate, CONFIGURATION.SYSADDRESS)
-  if (!result || !result.psbt) {
-    console.log('sendSys createTransaction failed')
-    return null
-  }
-  const psbt = await syscoinjs.signAndSendWithWIF(result.psbt, CONFIGURATION.SYSKEY, result.assets)
-  if (!psbt) {
-    console.log('sendSys signAndSendWithWIF failed')
-    return null
-  }
-  const tx = psbt.extractTransaction()
-  if (!tx) {
-    console.log('sendSys extractTransaction failed')
+  let tx
+  try {
+    const result = await syscoinjs.createTransaction(txOpts, CONFIGURATION.SYSADDRESS, outputsArr, feeRate, CONFIGURATION.SYSADDRESS)
+    if (!result || !result.psbt) {
+      console.log('sendSys createTransaction failed')
+      return null
+    }
+    const psbt = await syscoinjs.signAndSendWithWIF(result.psbt, CONFIGURATION.SYSKEY, result.assets)
+    if (!psbt) {
+      console.log('sendSys signAndSendWithWIF failed')
+      return null
+    }
+    tx = psbt.extractTransaction()
+    if (!tx) {
+      console.log('sendSys extractTransaction failed')
+      return null
+    }
+  } catch (e) {
+    console.log('could not create sendSys: ' + e.message)
     return null
   }
   return tx.getId()

@@ -23,10 +23,9 @@
     "bitcoin-proof": "^2.0.0",
     "bitcoinjs-lib": "^6.0.1",
     "body-parser": "^1.19.0",
-    "eth-proof": "^2.1.6",
     "express": "^4.17.1",
     "mongoose": "^5.6.4",
-    "syscoinjs-lib": "^1.0.200",
+    "syscoinjs-lib": "^1.0.205",
     "web3": "^1.7.0"
   },
   "devDependencies": {
