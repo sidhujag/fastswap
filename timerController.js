@@ -43,6 +43,12 @@ TimerController.prototype.status = async function () {
             wipObj.dsttxid = await txController.sendSys(wipObj.dstaddress, wipObj.amount)
             if (!wipObj.dsttxid) {
               console.log('status == 1 sendSys failed')
+              const deleteRes = await wipController.delete(wipObj.srctxid)
+              if (!deleteRes) {
+                console.log('status == 1 wipController.delete failed')
+                continue
+              }
+              updateBalance = true
               continue
             }
           } else if (wipObj.type === 'utxo') {
@@ -55,6 +61,12 @@ TimerController.prototype.status = async function () {
             wipObj.dsttxid = await txController.sendNEVM(wipObj.dstaddress, wipObj.amount)
             if (!wipObj.dsttxid) {
               console.log('status == 1 sendNEVM failed')
+              const deleteRes = await wipController.delete(wipObj.srctxid)
+              if (!deleteRes) {
+                console.log('status == 1 wipController.delete failed')
+                continue
+              }
+              updateBalance = true
               continue
             }
           }
@@ -92,7 +104,7 @@ TimerController.prototype.status = async function () {
         }
       }
       if (updateBalance) {
-        await balanceController.FetchAndUpdateBalances(balanceController)
+        await txController.FetchAndUpdateBalances(balanceController)
       }
     }
   }, 10)
@@ -116,6 +128,12 @@ TimerController.prototype.balanceWIPStatus = async function () {
             wipObj.inttxid = await txController.mintSYSX(wipObj.srctxid)
             if (!wipObj.inttxid) {
               console.log('status == 1 mintSYSX failed')
+              const deleteRes = await balanceWIPController.delete(wipObj.srctxid)
+              if (!deleteRes) {
+                console.log('status == 1 balanceWIPController.delete failed')
+                continue
+              }
+              updateBalance = true 
               continue
             }
           } else if (wipObj.type === 'utxo') {
@@ -128,6 +146,12 @@ TimerController.prototype.balanceWIPStatus = async function () {
             wipObj.inttxid = await txController.burnSYSXToNEVM(wipObj.amount)
             if (!wipObj.inttxid) {
               console.log('status == 1 burnSYSXToNEVM failed')
+              const deleteRes = await balanceWIPController.delete(wipObj.srctxid)
+              if (!deleteRes) {
+                console.log('status == 1 balanceWIPController.delete failed')
+                continue
+              }
+              updateBalance = true
               continue
             }
           } else {
@@ -152,6 +176,12 @@ TimerController.prototype.balanceWIPStatus = async function () {
             wipObj.dsttxid = await txController.sysxToSys(wipObj.amount)
             if (!wipObj.dsttxid) {
               console.log('status == 2 sysxToSys failed')
+              const deleteRes = await balanceWIPController.delete(wipObj.srctxid)
+              if (!deleteRes) {
+                console.log('status == 2 balanceWIPController.delete failed')
+                continue
+              }
+              updateBalance = true
               continue
             }
           } else if (wipObj.type === 'utxo') {
@@ -164,6 +194,12 @@ TimerController.prototype.balanceWIPStatus = async function () {
             wipObj.dsttxid = await txController.mintNEVM(wipObj.inttxid, txController)
             if (!wipObj.dsttxid) {
               console.log('status == 2 mintNEVM failed')
+              const deleteRes = await balanceWIPController.delete(wipObj.srctxid)
+              if (!deleteRes) {
+                console.log('status == 2 balanceWIPController.delete failed')
+                continue
+              }
+              updateBalance = true
               continue
             }
           } else {
@@ -203,7 +239,7 @@ TimerController.prototype.balanceWIPStatus = async function () {
         }
       }
       if (updateBalance) {
-        await balanceController.FetchAndUpdateBalances(balanceController)
+        await txController.FetchAndUpdateBalances(balanceController)
       }
     }
   }, 10)
@@ -224,7 +260,7 @@ TimerController.prototype.balanceAdjust = async function () {
     return
   }
   if (!balanceEntry) {
-    await balanceController.FetchAndUpdateBalances(balanceController)
+    await txController.FetchAndUpdateBalances(balanceController)
     console.log('balanceEntry empty')
     return
   }

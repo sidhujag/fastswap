@@ -1,30 +1,34 @@
 import rconfig from './SyscoinRelayI.js'
 import { getProof } from 'bitcoin-proof'
 import web3 from './web3.js'
-import syscoinjs from './syscoinjs.js'
 import sjs from 'syscoinjs-lib'
 import CONFIGURATION from './config.js'
 import erc20Managerabi from './SyscoinERC20Manager.js'
-function TxController () {
+import Balance from './balanceModel.js'
+const COINNEVM = web3.utils.toBN(web3.utils.toWei('1'))
+class TxController {
+  constructor () {
+    // 'null' for no password encryption for local storage
+    const HDSigner = new sjs.utils.HDSigner(CONFIGURATION.SYSSEED, null, CONFIGURATION.SysNetwork === sjs.utils.syscoinNetworks.testnet)
+    this.syscoinjs = new sjs.SyscoinJSLib(HDSigner, CONFIGURATION.BlockbookAPIURL, CONFIGURATION.SysNetwork)
+  }
 }
 // txController.js
 TxController.prototype.sysToSysx = async function (amount) {
   const burnAmount = web3.utils.toBN(amount).div(web3.utils.toBN(Math.pow(10, 10))).toString()
   const feeRate = new sjs.utils.BN(10)
   const txOpts = { rbf: true }
+  // null to let HDSigner find a new address for you
+  const changeAddress = null
+  const recvAddress = await this.syscoinjs.Signer.getNewReceivingAddress()
   const assetMap = new Map([
-    [CONFIGURATION.SYSXAsset, { changeAddress: CONFIGURATION.SYSADDRESS, outputs: [{ value: new sjs.utils.BN(burnAmount), address: CONFIGURATION.SYSADDRESS }] }]
+    [CONFIGURATION.SYSXAsset, { changeAddress: changeAddress, outputs: [{ value: new sjs.utils.BN(burnAmount), address: recvAddress }] }]
   ])
   let tx
   try {
-    const result = await syscoinjs.syscoinBurnToAssetAllocation(txOpts, assetMap, CONFIGURATION.SYSADDRESS, feeRate, CONFIGURATION.SYSADDRESS)
-    if (!result || !result.psbt) {
-      console.log('sysToSysx syscoinBurnToAssetAllocation failed')
-      return null
-    }
-    const psbt = await syscoinjs.signAndSendWithWIF(result.psbt, CONFIGURATION.SYSKEY, result.assets)
+    const psbt = await this.syscoinjs.syscoinBurnToAssetAllocation(txOpts, assetMap, changeAddress, feeRate)
     if (!psbt) {
-      console.log('sysToSysx signAndSendWithWIF failed')
+      console.log('sysToSysx syscoinBurnToAssetAllocation failed')
       return null
     }
     tx = psbt.extractTransaction()
@@ -42,21 +46,19 @@ TxController.prototype.sysxToSys = async function (amount) {
   const burnAmount = web3.utils.toBN(amount).div(web3.utils.toBN(Math.pow(10, 10))).toString()
   const feeRate = new sjs.utils.BN(10)
   const txOpts = { rbf: true }
+  // null to let HDSigner find a new address for you
+  const changeAddress = null
+  const recvAddress = await this.syscoinjs.Signer.getNewReceivingAddress()
   // empty ethaddress means burning SYSX to SYS
   const assetOpts = { ethaddress: Buffer.from('') }
   const assetMap = new Map([
-    [CONFIGURATION.SYSXAsset, { changeAddress: CONFIGURATION.SYSADDRESS, outputs: [{ value: new sjs.utils.BN(burnAmount), address: CONFIGURATION.SYSADDRESS }] }]
+    [CONFIGURATION.SYSXAsset, { changeAddress: changeAddress, outputs: [{ value: new sjs.utils.BN(burnAmount), address: recvAddress }] }]
   ])
   let tx
   try {
-    const result = await syscoinjs.assetAllocationBurn(assetOpts, txOpts, assetMap, CONFIGURATION.SYSADDRESS, feeRate, CONFIGURATION.SYSADDRESS)
-    if (!result || !result.psbt) {
-      console.log('sysxToSys assetAllocationBurn failed')
-      return null
-    }
-    const psbt = await syscoinjs.signAndSendWithWIF(result.psbt, CONFIGURATION.SYSKEY, result.assets)
+    const psbt = await this.syscoinjs.assetAllocationBurn(assetOpts, txOpts, assetMap, changeAddress, feeRate)
     if (!psbt) {
-      console.log('sysxToSys signAndSendWithWIF failed')
+      console.log('sysxToSys assetAllocationBurn failed')
       return null
     }
     tx = psbt.extractTransaction()
@@ -74,21 +76,19 @@ TxController.prototype.burnSYSXToNEVM = async function (amount) {
   const burnAmount = web3.utils.toBN(amount).div(web3.utils.toBN(Math.pow(10, 10))).toString()
   const feeRate = new sjs.utils.BN(10)
   const txOpts = { rbf: true }
+  // null to let HDSigner find a new address for you
+  const changeAddress = null
+  const recvAddress = await this.syscoinjs.Signer.getNewReceivingAddress()
   const ethAddress = CONFIGURATION.NEVMADDRESS.replace(/^0x/, '')
   const assetOpts = { ethaddress: Buffer.from(ethAddress, 'hex') }
   const assetMap = new Map([
-    [CONFIGURATION.SYSXAsset, { changeAddress: CONFIGURATION.SYSADDRESS, outputs: [{ value: new sjs.utils.BN(burnAmount), address: CONFIGURATION.SYSADDRESS }] }]
+    [CONFIGURATION.SYSXAsset, { changeAddress: changeAddress, outputs: [{ value: new sjs.utils.BN(burnAmount), address: recvAddress }] }]
   ])
   let tx
   try {
-    const result = await syscoinjs.assetAllocationBurn(assetOpts, txOpts, assetMap, CONFIGURATION.SYSADDRESS, feeRate, CONFIGURATION.SYSADDRESS)
-    if (!result || !result.psbt) {
-      console.log('burnSYSXToNEVM assetAllocationBurn failed')
-      return null
-    }
-    const psbt = await syscoinjs.signAndSendWithWIF(result.psbt, CONFIGURATION.SYSKEY, result.assets)
+    const psbt = await this.syscoinjs.assetAllocationBurn(assetOpts, txOpts, assetMap, changeAddress, feeRate)
     if (!psbt) {
-      console.log('burnSYSXToNEVM signAndSendWithWIF failed')
+      console.log('burnSYSXToNEVM assetAllocationBurn failed')
       return null
     }
     tx = psbt.extractTransaction()
@@ -103,6 +103,7 @@ TxController.prototype.burnSYSXToNEVM = async function (amount) {
   return tx.getId()
 }
 TxController.prototype.burnNEVMToSYSX = async function (amount) {
+  const recvAddress = await this.syscoinjs.Signer.getNewReceivingAddress()
   const SyscoinERC20Manager = new web3.eth.Contract(erc20Managerabi, CONFIGURATION.ERC20Manager)
   if (!SyscoinERC20Manager || !SyscoinERC20Manager.methods || !SyscoinERC20Manager.methods.freezeBurnERC20) {
     return null
@@ -110,7 +111,7 @@ TxController.prototype.burnNEVMToSYSX = async function (amount) {
   let hash
   try {
     hash = await new Promise((resolve, reject) => {
-      SyscoinERC20Manager.methods.freezeBurnERC20(amount, CONFIGURATION.SYSXAsset, CONFIGURATION.SYSADDRESS).send({ from: CONFIGURATION.NEVMADDRESS, gas: 400000, value: amount })
+      SyscoinERC20Manager.methods.freezeBurnERC20(amount, CONFIGURATION.SYSXAsset, recvAddress).send({ from: CONFIGURATION.NEVMADDRESS, gas: 400000, value: amount })
         .once('transactionHash', (hash) => {
           resolve(hash)
         })
@@ -213,6 +214,8 @@ TxController.prototype.mintNEVM = async function (txid, obj) {
 TxController.prototype.mintSYSX = async function (srctxid) {
   const feeRate = new sjs.utils.BN(10)
   const txOpts = { rbf: true }
+  // null to let HDSigner find a new address for you
+  const changeAddress = null
   // web3 URL + ID and nevm burn txid
   const assetOpts = {
     web3url: CONFIGURATION.Web3URL,
@@ -222,14 +225,9 @@ TxController.prototype.mintSYSX = async function (srctxid) {
   // will be auto filled based on ethtxid eth-proof
   try {
     const assetMap = null
-    const result = await syscoinjs.assetAllocationMint(assetOpts, txOpts, assetMap, CONFIGURATION.SYSADDRESS, feeRate, CONFIGURATION.SYSADDRESS)
-    if (!result || !result.psbt) {
-      console.log('mintSYSX assetAllocationMint failed')
-      return null
-    }
-    const psbt = await syscoinjs.signAndSendWithWIF(result.psbt, CONFIGURATION.SYSKEY, result.assets)
+    const psbt = await this.syscoinjs.assetAllocationMint(assetOpts, txOpts, assetMap, changeAddress, feeRate)
     if (!psbt) {
-      console.log('mintSYSX signAndSendWithWIF failed')
+      console.log('mintSYSX assetAllocationMint failed')
       return null
     }
     tx = psbt.extractTransaction()
@@ -247,19 +245,15 @@ TxController.prototype.sendSys = async function (address, amount) {
   const burnAmount = web3.utils.toBN(amount).div(web3.utils.toBN(Math.pow(10, 10))).toString()
   const feeRate = new sjs.utils.BN(10)
   const txOpts = { rbf: true }
+  const changeAddress = null
   const outputsArr = [
     { address: address, value: new sjs.utils.BN(burnAmount) }
   ]
   let tx
   try {
-    const result = await syscoinjs.createTransaction(txOpts, CONFIGURATION.SYSADDRESS, outputsArr, feeRate, CONFIGURATION.SYSADDRESS)
-    if (!result || !result.psbt) {
-      console.log('sendSys createTransaction failed')
-      return null
-    }
-    const psbt = await syscoinjs.signAndSendWithWIF(result.psbt, CONFIGURATION.SYSKEY, result.assets)
+    const psbt = await this.syscoinjs.createTransaction(txOpts, changeAddress, outputsArr, feeRate)
     if (!psbt) {
-      console.log('sendSys signAndSendWithWIF failed')
+      console.log('sendSys createTransaction failed')
       return null
     }
     tx = psbt.extractTransaction()
@@ -335,5 +329,32 @@ TxController.prototype.NEVMChainlocked = async function (srctxid, obj) {
     return false
   }
   return true
+}
+TxController.prototype.FetchAndUpdateBalances = async function (obj) {
+  const sysAccount = await sjs.utils.fetchBackendAccount(CONFIGURATION.BlockbookAPIURL, this.syscoinjs.Signer.getAccountXpub(), '?details=basic', true)
+  const balanceEntry = new Balance()
+  balanceEntry.sysbalance = web3.utils.toBN(sysAccount.balance).mul(web3.utils.toBN(Math.pow(10, 10))).toString()
+  try {
+    balanceEntry.nevmbalance = await web3.eth.getBalance(CONFIGURATION.NEVMADDRESS)
+  } catch (e) {
+    console.log('FetchAndUpdateBalances getbalance: ' + e.message)
+    return null
+  }
+  // cover for 1 SYS gas
+  if (web3.utils.toBN(balanceEntry.sysbalance).gt(COINNEVM)) {
+    balanceEntry.sysbalance = web3.utils.toBN(balanceEntry.sysbalance).sub(COINNEVM)
+  }
+  if (web3.utils.toBN(balanceEntry.nevmbalance).gt(COINNEVM)) {
+    balanceEntry.nevmbalance = web3.utils.toBN(balanceEntry.nevmbalance).sub(COINNEVM)
+  }
+  balanceEntry.sysbalance = balanceEntry.sysbalance.toString()
+  balanceEntry.nevmbalance = balanceEntry.nevmbalance.toString()
+  console.log('FetchAndUpdateBalances sysbalance: ' + balanceEntry.sysbalance + ' nevmbalance: ' + balanceEntry.nevmbalance)
+  const updateRes = await obj.save(balanceEntry)
+  if (!updateRes) {
+    console.log('update failed')
+    return null
+  }
+  return balanceEntry
 }
 export default new TxController()

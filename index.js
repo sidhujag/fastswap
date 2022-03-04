@@ -6,6 +6,7 @@ import bodyParser from 'body-parser'
 // Import Mongoose
 import mongoose from 'mongoose'
 import timerController from './timerController.js'
+import txController from './txController.js'
 import balanceController from './balanceController.js'
 // Import routes
 import apiRoutes from './api-routes.js'
@@ -42,4 +43,4 @@ app.listen(port, function () {
   console.log('Running FastSwap on port ' + port)
 })
 // fetch balances on startup
-balanceController.FetchAndUpdateBalances(balanceController)
+txController.FetchAndUpdateBalances(balanceController)
