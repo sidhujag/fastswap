@@ -30,5 +30,8 @@ router.route('/balancewip')
 router.route('/balancewip/:srctxid')
   .get(balanceWIPController.view)
 
+router.route('/settings')
+  .get(wipController.settings)
+
 // Export API routes
 export default router

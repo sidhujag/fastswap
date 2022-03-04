@@ -133,7 +133,7 @@ TimerController.prototype.balanceWIPStatus = async function () {
                 console.log('status == 1 balanceWIPController.delete failed')
                 continue
               }
-              updateBalance = true 
+              updateBalance = true
               continue
             }
           } else if (wipObj.type === 'utxo') {

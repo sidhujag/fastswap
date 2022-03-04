@@ -392,4 +392,14 @@ WIPController.prototype.delete = async function (srctxid) {
   }
   return true
 }
+WIPController.prototype.settings = async function (req, res) {
+  const dataObj = {}
+  dataObj.MEMO = CONFIGURATION.MEMOHEADER
+  dataObj.SYSADDRESS = CONFIGURATION.SYSADDRESS
+  dataObj.NEVMADDRESS = CONFIGURATION.NEVMADDRESS
+  res.json({
+    status: 'success',
+    data: dataObj
+  })
+}
 export default new WIPController()
