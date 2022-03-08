@@ -8,9 +8,17 @@ import Balance from './balanceModel.js'
 const COINNEVM = web3.utils.toBN(web3.utils.toWei('1'))
 class TxController {
   constructor () {
+    this.init()
+  }
+  async init() {
     // 'null' for no password encryption for local storage
     const HDSigner = new sjs.utils.HDSigner(CONFIGURATION.SYSSEED, null, CONFIGURATION.SysNetwork === sjs.utils.syscoinNetworks.testnet)
     this.syscoinjs = new sjs.SyscoinJSLib(HDSigner, CONFIGURATION.BlockbookAPIURL, CONFIGURATION.SysNetwork)
+    CONFIGURATION.NEVMADDRESS = await web3.eth.getAccounts()
+    CONFIGURATION.NEVMADDRESS = CONFIGURATION.NEVMADDRESS[0]
+    CONFIGURATION.SYSADDRESS = await this.syscoinjs.Signer.getNewReceivingAddress()
+    console.log("CONFIGURATION.NEVMADDRESS " + CONFIGURATION.NEVMADDRESS)
+    console.log("CONFIGURATION.SYSADDRESS " + CONFIGURATION.SYSADDRESS)
   }
 }
 // txController.js

@@ -8,10 +8,7 @@ class CONFIGURATION {
     this.BlockbookAPIURL = 'https://sys-explorer.tk/'
     this.SYSXAsset = '123456'
     this.SysNetwork = sjs.utils.syscoinNetworks.testnet
-    this.NEVMKEY = ''
-    this.NEVMADDRESS = '0xb8CE9ab6943e0eCED004cDe8e3bBed6568B2Fa01'
     this.SYSSEED = ''
-    this.SYSADDRESS = 'tsys1q33ad2ral94uhslvfnt54v0jrsur9fvkapfa9zy'
     this.NEVMBlockHeight = 840000
     this.MONGOOSEPORT = 27017
     this.PORT = 8080
