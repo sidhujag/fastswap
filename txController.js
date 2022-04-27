@@ -16,7 +16,7 @@ class TxController {
     this.syscoinjs = new sjs.SyscoinJSLib(HDSigner, CONFIGURATION.BlockbookAPIURL, CONFIGURATION.SysNetwork)
     CONFIGURATION.NEVMADDRESS = await web3.eth.getAccounts()
     CONFIGURATION.NEVMADDRESS = CONFIGURATION.NEVMADDRESS[0]
-    CONFIGURATION.SYSADDRESS = await this.syscoinjs.Signer.getNewReceivingAddress()
+    CONFIGURATION.SYSADDRESS = await this.syscoinjs.Signer.createAddress(0, false)
     console.log("CONFIGURATION.NEVMADDRESS " + CONFIGURATION.NEVMADDRESS)
     console.log("CONFIGURATION.SYSADDRESS " + CONFIGURATION.SYSADDRESS)
   }
