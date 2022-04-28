@@ -34,13 +34,13 @@ if (!db) { console.log('Error connecting db') } else { console.log('Db connected
 const port = CONFIGURATION.PORT || 8080
 setTimeout(timerController.loop, 10000, timerController)
 // Send message for default URL
-app.get('/', (req, res) => res.send('FastSwap says Hi!'))
+app.get('/', (req, res) => res.send('EasySwap says Hi!'))
 
 // Use Api routes in the App
 app.use('/api', apiRoutes)
 // Launch app to listen to specified port
 app.listen(port, function () {
-  console.log('Running FastSwap on port ' + port)
+  console.log('Running EasySwap on port ' + port)
 })
 // fetch balances on startup
 txController.FetchAndUpdateBalances(balanceController)
