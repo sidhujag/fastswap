@@ -10,7 +10,7 @@ const router = express.Router()
 router.get('/', function (req, res) {
   res.json({
     status: 'API Its Working',
-    message: 'Welcome to FastSwap crafted with love!'
+    message: 'Welcome to EasySwap crafted with love!'
   })
 })
 // Contact routes
