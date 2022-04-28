@@ -48,6 +48,7 @@ BalanceWIPController.prototype.save = async function (balanceWIPEntry) {
     balanceEntry.amount = balanceWIPEntry.amount
     balanceEntry.type = balanceWIPEntry.type
     balanceEntry.status = balanceWIPEntry.status
+    balanceEntry.failed_count = balanceWIPEntry.failed_count
     return await this.update(balanceEntry)
   } else {
     return await this.update(balanceWIPEntry)

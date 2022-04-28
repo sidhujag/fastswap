@@ -6,19 +6,21 @@ import CONFIGURATION from './config.js'
 import erc20Managerabi from './SyscoinERC20Manager.js'
 import Balance from './balanceModel.js'
 const COINNEVM = web3.utils.toBN(web3.utils.toWei('1'))
+let mutexNEVM = false
 class TxController {
   constructor () {
     this.init()
   }
-  async init() {
+
+  async init () {
     // 'null' for no password encryption for local storage
     const HDSigner = new sjs.utils.HDSigner(CONFIGURATION.SYSSEED, null, CONFIGURATION.SysNetwork === sjs.utils.syscoinNetworks.testnet)
     this.syscoinjs = new sjs.SyscoinJSLib(HDSigner, CONFIGURATION.BlockbookAPIURL, CONFIGURATION.SysNetwork)
     CONFIGURATION.NEVMADDRESS = await web3.eth.getAccounts()
     CONFIGURATION.NEVMADDRESS = CONFIGURATION.NEVMADDRESS[0]
     CONFIGURATION.SYSADDRESS = await this.syscoinjs.Signer.createAddress(0, false)
-    console.log("CONFIGURATION.NEVMADDRESS " + CONFIGURATION.NEVMADDRESS)
-    console.log("CONFIGURATION.SYSADDRESS " + CONFIGURATION.SYSADDRESS)
+    console.log('CONFIGURATION.NEVMADDRESS ' + CONFIGURATION.NEVMADDRESS)
+    console.log('CONFIGURATION.SYSADDRESS ' + CONFIGURATION.SYSADDRESS)
   }
 }
 // txController.js
@@ -116,6 +118,10 @@ TxController.prototype.burnNEVMToSYSX = async function (amount) {
   if (!SyscoinERC20Manager || !SyscoinERC20Manager.methods || !SyscoinERC20Manager.methods.freezeBurnERC20) {
     return null
   }
+  if (mutexNEVM) {
+    return null
+  }
+  mutexNEVM = true
   let hash
   try {
     hash = await new Promise((resolve, reject) => {
@@ -129,8 +135,10 @@ TxController.prototype.burnNEVMToSYSX = async function (amount) {
     })
   } catch (error) {
     console.log('burnNEVMToSYSX freezeBurnERC20 failed:' + error.message)
+    mutexNEVM = false
     return null
   }
+  mutexNEVM = false
   return hash
 }
 TxController.prototype.getProofs = async function (txid) {
@@ -201,6 +209,10 @@ TxController.prototype.mintNEVM = async function (txid, obj) {
     console.log('mintNEVM web3.eth.getBlock failed')
     return null
   }
+  if (mutexNEVM) {
+    return null
+  }
+  mutexNEVM = true
   const _syscoinBlockHeader = '0x' + syscoinblockheader
   let hash
   try {
@@ -215,8 +227,10 @@ TxController.prototype.mintNEVM = async function (txid, obj) {
     })
   } catch (error) {
     console.log('mintNEVM relayTx failed:' + error.message)
+    mutexNEVM = false
     return null
   }
+  mutexNEVM = false
   return hash
 }
 TxController.prototype.mintSYSX = async function (srctxid) {
@@ -276,7 +290,11 @@ TxController.prototype.sendSys = async function (address, amount) {
   return tx.getId()
 }
 TxController.prototype.sendNEVM = async function (address, amount) {
-  let hash
+  let hash = null
+  if (mutexNEVM) {
+    return null
+  }
+  mutexNEVM = true
   try {
     hash = await new Promise((resolve, reject) => {
       web3.eth.sendTransaction({
@@ -292,8 +310,10 @@ TxController.prototype.sendNEVM = async function (address, amount) {
     })
   } catch (error) {
     console.log('sendNEVM web3.eth.sendTransaction failed:' + error.message)
+    mutexNEVM = false
     return null
   }
+  mutexNEVM = false
   return hash
 }
 TxController.prototype.sysChainlocked = async function (srctxid, obj) {

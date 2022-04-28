@@ -22,6 +22,7 @@ CompleteController.prototype.new = async function (obj) {
   complete.dsttxid = obj.dsttxid
   complete.amount = obj.amount
   complete.dstaddress = obj.dstaddress
+  complete.failed_count = obj.failed_count
   try {
     const completeObj = await complete.save()
     if (!completeObj) {

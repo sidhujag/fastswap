@@ -17,6 +17,10 @@ const balanceWIPSchema = mongoose.Schema({
     type: String,
     required: true
   },
+  failed_count: {
+    type: Number,
+    required: true
+  },
   status: {
     type: Number,
     required: true

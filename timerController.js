@@ -24,6 +24,11 @@ TimerController.prototype.loop = async function (obj) {
   }
   setTimeout(obj.loop, 10000, obj)
 }
+function sleep (ms) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms)
+  })
+}
 TimerController.prototype.status = async function () {
   WIP.find(async function (err, wipEntry) {
     if (!err && wipEntry && wipEntry.length) {
@@ -43,12 +48,7 @@ TimerController.prototype.status = async function () {
             wipObj.dsttxid = await txController.sendSys(wipObj.dstaddress, wipObj.amount)
             if (!wipObj.dsttxid) {
               console.log('status == 1 sendSys failed')
-              const deleteRes = await wipController.delete(wipObj.srctxid)
-              if (!deleteRes) {
-                console.log('status == 1 wipController.delete failed')
-                continue
-              }
-              updateBalance = true
+              wipEntry.failed_count++
               continue
             }
           } else if (wipObj.type === 'utxo') {
@@ -61,12 +61,7 @@ TimerController.prototype.status = async function () {
             wipObj.dsttxid = await txController.sendNEVM(wipObj.dstaddress, wipObj.amount)
             if (!wipObj.dsttxid) {
               console.log('status == 1 sendNEVM failed')
-              const deleteRes = await wipController.delete(wipObj.srctxid)
-              if (!deleteRes) {
-                console.log('status == 1 wipController.delete failed')
-                continue
-              }
-              updateBalance = true
+              wipEntry.failed_count++
               continue
             }
           }
@@ -102,6 +97,7 @@ TimerController.prototype.status = async function () {
           }
           updateBalance = true
         }
+        await sleep(5000)
       }
       if (updateBalance) {
         await txController.FetchAndUpdateBalances(balanceController)
@@ -146,12 +142,6 @@ TimerController.prototype.balanceWIPStatus = async function () {
             wipObj.inttxid = await txController.burnSYSXToNEVM(wipObj.amount)
             if (!wipObj.inttxid) {
               console.log('status == 1 burnSYSXToNEVM failed')
-              const deleteRes = await balanceWIPController.delete(wipObj.srctxid)
-              if (!deleteRes) {
-                console.log('status == 1 balanceWIPController.delete failed')
-                continue
-              }
-              updateBalance = true
               continue
             }
           } else {
@@ -176,12 +166,6 @@ TimerController.prototype.balanceWIPStatus = async function () {
             wipObj.dsttxid = await txController.sysxToSys(wipObj.amount)
             if (!wipObj.dsttxid) {
               console.log('status == 2 sysxToSys failed')
-              const deleteRes = await balanceWIPController.delete(wipObj.srctxid)
-              if (!deleteRes) {
-                console.log('status == 2 balanceWIPController.delete failed')
-                continue
-              }
-              updateBalance = true
               continue
             }
           } else if (wipObj.type === 'utxo') {
@@ -194,12 +178,6 @@ TimerController.prototype.balanceWIPStatus = async function () {
             wipObj.dsttxid = await txController.mintNEVM(wipObj.inttxid, txController)
             if (!wipObj.dsttxid) {
               console.log('status == 2 mintNEVM failed')
-              const deleteRes = await balanceWIPController.delete(wipObj.srctxid)
-              if (!deleteRes) {
-                console.log('status == 2 balanceWIPController.delete failed')
-                continue
-              }
-              updateBalance = true
               continue
             }
           } else {
@@ -275,6 +253,7 @@ TimerController.prototype.balanceAdjust = async function () {
     console.log('try sysToSysx bnBurnAmount ' + bnBurnAmount.toString())
     // go from SYS -> SYSX -> NEVM
     const balanceWIP = new BalanceWIP()
+    balanceWIP.failed_count = 0
     balanceWIP.srctxid = await txController.sysToSysx(bnBurnAmount.toString())
     if (balanceWIP.srctxid) {
       balanceWIP.status = 1
@@ -290,6 +269,7 @@ TimerController.prototype.balanceAdjust = async function () {
     console.log('try burnNEVMToSYSX bnBurnAmount ' + bnBurnAmount.toString())
     // go from NEVM -> SYSX -> SYS
     const balanceWIP = new BalanceWIP()
+    balanceWIP.failed_count = 0
     balanceWIP.srctxid = await txController.burnNEVMToSYSX(bnBurnAmount.toString())
     if (balanceWIP.srctxid) {
       balanceWIP.status = 1

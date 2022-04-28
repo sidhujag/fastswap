@@ -38,6 +38,7 @@ WIPController.prototype.new = async function (req, res) {
     return
   }
   wip.srctxid = req.body.txid
+  wip.failed_count = 0
   let balanceEntry
   let amountBN
   try {
@@ -359,6 +360,7 @@ WIPController.prototype.save = async function (wipEntryIn) {
     wipEntry.amount = wipEntryIn.amount
     wipEntry.dstaddress = wipEntryIn.dstaddress
     wipEntry.status = wipEntryIn.status
+    wipEntry.failed_count = wipEntryIn.failed_count
     return await this.update(wipEntry)
   } else {
     return await this.update(wipEntryIn)

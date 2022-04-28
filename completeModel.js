@@ -20,6 +20,10 @@ const completeSchema = mongoose.Schema({
     type: String,
     required: true
   },
+  failed_count: {
+    type: Number,
+    required: true
+  },
   dstaddress: {
     type: String,
     required: true
