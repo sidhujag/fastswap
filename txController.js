@@ -122,7 +122,7 @@ TxController.prototype.burnNEVMToSYSX = async function (amount) {
     return null
   }
   mutexNEVM = true
-  let hash
+  let hash = null
   try {
     hash = await new Promise((resolve, reject) => {
       SyscoinERC20Manager.methods.freezeBurnERC20(amount, CONFIGURATION.SYSXAsset, recvAddress).send({ from: CONFIGURATION.NEVMADDRESS, gas: 400000, value: amount })
@@ -214,7 +214,7 @@ TxController.prototype.mintNEVM = async function (txid, obj) {
   }
   mutexNEVM = true
   const _syscoinBlockHeader = '0x' + syscoinblockheader
-  let hash
+  let hash = null
   try {
     hash = await new Promise((resolve, reject) => {
       SyscoinRelay.methods.relayTx(nevmBlock.number, _txBytes, txindex, merkleProof.sibling, _syscoinBlockHeader).send({ from: CONFIGURATION.NEVMADDRESS, gas: 400000 })
@@ -331,7 +331,7 @@ TxController.prototype.sysChainlocked = async function (srctxid, obj) {
 TxController.prototype.NEVMChainlocked = async function (srctxid, obj) {
   let srctx
   try {
-    srctx = await web3.eth.getTransaction(srctxid)
+    srctx = await web3.eth.getTransactionReceipt(srctxid)
   } catch (e) {
     console.log('NEVMChainlocked web3.eth.getTransaction: ' + e.message)
     return false
@@ -339,6 +339,10 @@ TxController.prototype.NEVMChainlocked = async function (srctxid, obj) {
   if (!srctx) {
     console.log('NEVMChainlocked web3.eth.getTransaction failed')
     return false
+  }
+  if(!srctx.status) {
+    console.log('NEVMChainlocked web3.eth.getTransaction status was 0')
+    return false 
   }
   const utxoChainHeight = (srctx.blockNumber + CONFIGURATION.NEVMBlockHeight) - 1
   const block = await sjs.utils.fetchBackendBlock(CONFIGURATION.BlockbookAPIURL, utxoChainHeight)
