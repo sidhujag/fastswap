@@ -124,12 +124,6 @@ TimerController.prototype.balanceWIPStatus = async function () {
             wipObj.inttxid = await txController.mintSYSX(wipObj.srctxid)
             if (!wipObj.inttxid) {
               console.log('status == 1 mintSYSX failed')
-              const deleteRes = await balanceWIPController.delete(wipObj.srctxid)
-              if (!deleteRes) {
-                console.log('status == 1 balanceWIPController.delete failed')
-                continue
-              }
-              updateBalance = true
               continue
             }
             wipObj.status = 2
