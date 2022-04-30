@@ -150,7 +150,6 @@ TimerController.prototype.balanceWIPStatus = async function () {
         }
         updateBalance = true
       } else if (wipObj.status === 2) {
-        wipObj.status = 3
         if (wipObj.type === 'nevm') {
           const lockedRes = await txController.sysChainlocked(wipObj.inttxid, txController)
           if (!lockedRes) {
@@ -163,6 +162,7 @@ TimerController.prototype.balanceWIPStatus = async function () {
             console.log('status == 2 sysxToSys failed')
             continue
           }
+          wipObj.status = 3
         } else if (wipObj.type === 'utxo') {
           const lockedRes = await txController.sysChainlocked(wipObj.inttxid, txController)
           if (!lockedRes) {
@@ -175,6 +175,7 @@ TimerController.prototype.balanceWIPStatus = async function () {
             console.log('status == 2 mintNEVM failed')
             continue
           }
+          wipObj.status = 3
         } else {
           console.log('status == 2 invalid type')
           continue
