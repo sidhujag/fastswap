@@ -340,9 +340,9 @@ TxController.prototype.NEVMChainlocked = async function (srctxid, obj) {
     console.log('NEVMChainlocked web3.eth.getTransaction failed')
     return false
   }
-  if (!srctx.status) {
+  if(!srctx.status) {
     console.log('NEVMChainlocked web3.eth.getTransaction status was 0')
-    return false
+    return false 
   }
   const utxoChainHeight = (srctx.blockNumber + CONFIGURATION.NEVMBlockHeight) - 1
   const block = await sjs.utils.fetchBackendBlock(CONFIGURATION.BlockbookAPIURL, utxoChainHeight)
