@@ -7,6 +7,7 @@ import WIP from './wipModel.js'
 // Import complete model
 import Complete from './completeModel.js'
 import Balance from './balanceModel.js'
+import txController from './txController.js'
 const COINSYS = web3.utils.toBN('100000000')
 const COINNEVM = web3.utils.toBN(web3.utils.toWei('1'))
 class WIPController {
@@ -131,6 +132,14 @@ WIPController.prototype.new = async function (req, res) {
   }
   // if nevm then destination is utxo
   if (wip.type === 'nevm') {
+    const lockedRes = await txController.NEVMChainlocked(wip.srctxid, txController)
+    if (!lockedRes) {
+      res.json({
+        status: 'error',
+        data: 'Source transaction not chainlocked yet'
+      })
+      return
+    }
     if (!srctx.input) {
       res.json({
         status: 'error',
@@ -179,6 +188,14 @@ WIPController.prototype.new = async function (req, res) {
     }
     // if utxo then destination is nevm
   } else if (wip.type === 'utxo') {
+    const lockedRes = await txController.sysChainlocked(wip.srctxid, txController)
+    if (!lockedRes) {
+      res.json({
+        status: 'error',
+        data: 'Source transaction not chainlocked yet'
+      })
+      return
+    }
     if (!srctx.hex) {
       res.json({
         status: 'error',
