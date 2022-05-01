@@ -30,7 +30,7 @@ function sleep (ms) {
   })
 }
 TimerController.prototype.status = async function () {
-  const wipEntry = await WIP.find({}).exec()
+  const wipEntry = await WIP.find({}).sort({ unconfirm_count: 1 }).exec()
   if (wipEntry && wipEntry.length) {
     let updateBalance = false
     for (const wipObj of wipEntry) {
@@ -38,6 +38,26 @@ TimerController.prototype.status = async function () {
       if (wipObj.status === 1) {
         // check for confirmation/chainlock
         if (wipObj.type === 'nevm') {
+          const lockedRes = await txController.NEVMChainlocked(wipObj.srctxid, txController)
+          if (!lockedRes) {
+            console.log('status == 1 nevm not chainlocked')
+            wipEntry.unconfirm_count++
+            // if unconfirmed 10s*200 = 2000s then expire it
+            if (wipEntry.unconfirm_count > 200) {
+              const deleteRes = await wipController.delete(wipObj.srctxid)
+              if (!deleteRes) {
+                console.log('status == 1 wipController could not delete wipEntry')
+                continue
+              }
+            } else {
+              const updateRes = await wipController.update(wipObj)
+              if (!updateRes) {
+                console.log('status == 1 wipController could not be updated')
+                continue
+              }
+            }
+            continue
+          }
           // send SYS to user on utxo chain
           wipObj.dsttxid = await txController.sendSys(wipObj.dstaddress, wipObj.amount)
           if (!wipObj.dsttxid) {
@@ -52,6 +72,26 @@ TimerController.prototype.status = async function () {
           }
           wipObj.status = 2
         } else if (wipObj.type === 'utxo') {
+          const lockedRes = await txController.sysChainlocked(wipObj.srctxid, txController)
+          if (!lockedRes) {
+            console.log('status == 1 sys not chainlocked')
+            wipEntry.unconfirm_count++
+            // if unconfirmed 10s*200 = 2000s then expire it
+            if (wipEntry.unconfirm_count > 200) {
+              const deleteRes = await wipController.delete(wipObj.srctxid)
+              if (!deleteRes) {
+                console.log('status == 1 wipController could not delete wipEntry')
+                continue
+              }
+            } else {
+              const updateRes = await wipController.update(wipObj)
+              if (!updateRes) {
+                console.log('status == 1 wipController could not be updated')
+                continue
+              }
+            }
+            continue
+          }
           // send SYS to user on nevm chain
           wipObj.dsttxid = await txController.sendNEVM(wipObj.dstaddress, wipObj.amount)
           if (!wipObj.dsttxid) {
@@ -98,7 +138,7 @@ TimerController.prototype.status = async function () {
         }
         updateBalance = true
       }
-      await sleep(5000)
+      await sleep(500)
     }
     if (updateBalance) {
       await txController.FetchAndUpdateBalances(balanceController)

@@ -7,7 +7,6 @@ import WIP from './wipModel.js'
 // Import complete model
 import Complete from './completeModel.js'
 import Balance from './balanceModel.js'
-import txController from './txController.js'
 const COINSYS = web3.utils.toBN('100000000')
 const COINNEVM = web3.utils.toBN(web3.utils.toWei('1'))
 class WIPController {
@@ -40,6 +39,7 @@ WIPController.prototype.new = async function (req, res) {
   }
   wip.srctxid = req.body.txid
   wip.failed_count = 0
+  wip.unconfirm_count = 0
   let balanceEntry
   let amountBN
   try {
@@ -132,14 +132,6 @@ WIPController.prototype.new = async function (req, res) {
   }
   // if nevm then destination is utxo
   if (wip.type === 'nevm') {
-    const lockedRes = await txController.NEVMChainlocked(wip.srctxid, txController)
-    if (!lockedRes) {
-      res.json({
-        status: 'error',
-        data: 'Source transaction not chainlocked yet'
-      })
-      return
-    }
     if (!srctx.input) {
       res.json({
         status: 'error',
@@ -188,14 +180,6 @@ WIPController.prototype.new = async function (req, res) {
     }
     // if utxo then destination is nevm
   } else if (wip.type === 'utxo') {
-    const lockedRes = await txController.sysChainlocked(wip.srctxid, txController)
-    if (!lockedRes) {
-      res.json({
-        status: 'error',
-        data: 'Source transaction not chainlocked yet'
-      })
-      return
-    }
     if (!srctx.hex) {
       res.json({
         status: 'error',
@@ -378,6 +362,7 @@ WIPController.prototype.save = async function (wipEntryIn) {
     wipEntry.dstaddress = wipEntryIn.dstaddress
     wipEntry.status = wipEntryIn.status
     wipEntry.failed_count = wipEntryIn.failed_count
+    wipEntry.unconfirm_count = wipEntryIn.unconfirm_count
     return await this.update(wipEntry)
   } else {
     return await this.update(wipEntryIn)

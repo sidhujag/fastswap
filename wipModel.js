@@ -24,6 +24,10 @@ const wipSchema = mongoose.Schema({
     type: Number,
     required: true
   },
+  unconfirm_count: {
+    type: Number,
+    required: true
+  },
   dstaddress: {
     type: String,
     required: true
