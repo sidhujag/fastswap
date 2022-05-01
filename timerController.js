@@ -63,10 +63,19 @@ TimerController.prototype.status = async function () {
           if (!wipObj.dsttxid) {
             console.log('status == 1 sendSys failed')
             wipEntry.failed_count++
-            const updateRes = await wipController.update(wipObj)
-            if (!updateRes) {
-              console.log('status == 1 wipController could not be updated')
-              continue
+            // if failed 200 times just delete
+            if (wipEntry.failed_count > 200) {
+              const deleteRes = await wipController.delete(wipObj.srctxid)
+              if (!deleteRes) {
+                console.log('status == 1 wipController could not delete wipEntry')
+                continue
+              }
+            } else {
+              const updateRes = await wipController.update(wipObj)
+              if (!updateRes) {
+                console.log('status == 1 wipController could not be updated')
+                continue
+              }
             }
             continue
           }
@@ -97,10 +106,19 @@ TimerController.prototype.status = async function () {
           if (!wipObj.dsttxid) {
             console.log('status == 1 sendNEVM failed')
             wipEntry.failed_count++
-            const updateRes = await wipController.update(wipObj)
-            if (!updateRes) {
-              console.log('status == 1 wipController could not be updated')
-              continue
+            // if failed 200 times just delete
+            if (wipEntry.failed_count > 200) {
+              const deleteRes = await wipController.delete(wipObj.srctxid)
+              if (!deleteRes) {
+                console.log('status == 1 wipController could not delete wipEntry')
+                continue
+              }
+            } else {
+              const updateRes = await wipController.update(wipObj)
+              if (!updateRes) {
+                console.log('status == 1 wipController could not be updated')
+                continue
+              }
             }
             continue
           }
