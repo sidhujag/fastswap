@@ -1,0 +1,249 @@
+openapi: 3.0.1
+info:
+  title: Fast Swap API
+  description: "This is API Designed to handle swaps between SYS UTXO and NEVM"
+  termsOfService: http://swagger.io/terms/
+  contact:
+    email: jsidhu@blockchainfoundry.co
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  version: 1.0.0
+externalDocs:
+  description: Find out more about Syscoin
+  url: https://syscoin.org/
+servers:
+  - url: https://fastswap-api.syscoin.org/api
+  - url: http://localhost:8080/api
+tags:
+  - name: fastswap
+    description: Swap information
+  - name: balances
+    description: Access to balances
+  - name: settings
+    description: Operations about user
+    externalDocs:
+      description: Find out more about our store
+      url: http://swagger.io
+paths:
+  /fastswap:
+    get:
+      tags:
+        - fastswap
+      summary: Fetches all Active WIPs
+      operationId: fetchWips
+      responses:
+        200:
+          description: "Returns list of WIPs"
+          content:
+            application-json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    $ref: "#/components/schemas/ResponseStatus"
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ActiveWip"
+      x-codegen-request-body-name: body
+  /fastswap/{txid}:
+    get:
+      tags:
+        - fastswap
+      summary: Fetch specific WIP
+      operationId: fetchWipById
+      parameters:
+        - name: txid
+          in: path
+          description: Transaction ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        200:
+          description: "Fetch WIP"
+          content:
+            application-json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    $ref: "#/components/schemas/ResponseStatus"
+                  data:
+                    $ref: "#/components/schemas/WIP"
+    post:
+      tags:
+        - fastswap
+      summary: Create new FastSwap
+      parameters:
+        - name: txid
+          in: path
+          description: Transaction ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        content:
+          application-json:
+            schema:
+              type: object
+              properties:
+                txid:
+                  type: string
+      responses:
+        200:
+          description: Successful swap
+          content:
+            application-json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    $ref: "#/components/schemas/ResponseStatus"
+                  data:
+                    $ref: "#/components/schemas/WIP"
+        400:
+          description: Failed swap
+          content:
+            application-json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    $ref: "#/components/schemas/ResponseStatus"
+                  data:
+                    type: string
+
+  /balances:
+    get:
+      tags:
+        - balances
+      summary: Fetch System Current balance
+      responses:
+        200:
+          description: Current Balance
+          content:
+            application-json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    $ref: "#/components/schemas/ResponseStatus"
+                  message:
+                    type: string
+                  data:
+                    $ref: "#/components/schemas/Balance"
+  /balancewip:
+    get:
+      tags:
+        - balances
+      summary: Fetch WIP Balances
+      responses:
+        200:
+          description: Current WIP Balance
+          content:
+            application-json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    $ref: "#/components/schemas/ResponseStatus"
+                  message:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ActiveWip"
+  /balancewip/{srctxid}:
+    get:
+      tags:
+        - balances
+      summary: Fetch WIP Balance by srctxid
+      parameters:
+        - name: srctxid
+          in: path
+          description: Transaction ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        200:
+          description: Current WIP Balance
+          content:
+            application-json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    $ref: "#/components/schemas/ResponseStatus"
+                  data:
+                    $ref: "#/components/schemas/ActiveWip"
+  /settings:
+    get:
+      tags:
+        - settings
+      summary: Get Settings
+      responses:
+        200:
+          description: Current Settings
+          content:
+            application-json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    $ref: "#/components/schemas/ResponseStatus"
+                  data:
+                    $ref: "#/components/schemas/Settings"
+
+components:
+  schemas:
+    Balance:
+      type: object
+      properties:
+        sysbalance:
+          type: string
+        nevmbalance:
+          type: string
+
+    ResponseStatus:
+      type: string
+      enum:
+        - success
+        - error
+    Settings:
+      type: object
+      properties:
+        MEMO:
+          type: string
+        SYSADDRESS:
+          type: string
+        NEVMADDRESS:
+          type: string
+    WIP:
+      type: object
+      properties:
+        srctxid:
+          type: string
+        dsttxid:
+          type: string
+        amount:
+          type: string
+        type:
+          type: string
+        status:
+          type: string
+        create_date:
+          type: string
+          format: date
+    ActiveWip:
+      allOf:
+        - $ref: "#/components/schemas/WIP"
+        - type: object
+          properties:
+            inttxid:
+              type: string
